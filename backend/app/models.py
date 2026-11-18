@@ -17,7 +17,8 @@ class Contact(Base):
     __tablename__ = "contacts"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(160), default="")
-    phone: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     opted_in: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
@@ -25,6 +26,7 @@ class Campaign(Base):
     __tablename__ = "campaigns"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(160))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     template_name: Mapped[str] = mapped_column(String(160))
     language: Mapped[str] = mapped_column(String(20), default="en")
     image_url: Mapped[str] = mapped_column(Text)
