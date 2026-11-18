@@ -73,11 +73,11 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
     return {"access_token": create_access_token(user.id)}
 
 @app.get(f"{settings.api_prefix}/auth/me", response_model=UserOut)
-def me(user: User = Depends(get_current_user)):
+def me(user: User = Depends(get_admin_user)):
     return user
 
 @app.post(f"{settings.api_prefix}/contacts/import")
-async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(False), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(False), db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     if not file.filename or Path(file.filename).suffix.lower() not in {".xlsx", ".xlsm"}:
         raise HTTPException(400, "Upload an .xlsx or .xlsm Excel file")
     content = await file.read()
@@ -113,11 +113,11 @@ async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(F
         raise HTTPException(400, f"Could not read Excel file: {exc}")
     
 @app.get(f"{settings.api_prefix}/contacts", response_model=list[ContactOut])
-def list_contacts(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_contacts(db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     return list(db.scalars(select(Contact).where(Contact.user_id == user.id).order_by(Contact.created_at.desc()).limit(1000)))
 
 @app.patch(f"{settings.api_prefix}/contacts/{{contact_id}}/consent")
-def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     contact = db.scalar(select(Contact).where(Contact.id == contact_id, Contact.user_id == user.id))
     if not contact: raise HTTPException(404, "Contact not found")
     contact.opted_in = opted_in
@@ -125,7 +125,7 @@ def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db
     return {"id": contact.id, "opted_in": contact.opted_in}
 
 @app.post(f"{settings.api_prefix}/media")
-async def upload_media(file: UploadFile = File(...), user: User = Depends(get_current_user)):
+async def upload_media(file: UploadFile = File(...), user: User = Depends(get_admin_user)):
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
         raise HTTPException(400, "Only PNG, JPG and WEBP images are supported")
@@ -144,7 +144,7 @@ async def upload_media(file: UploadFile = File(...), user: User = Depends(get_cu
     return {"secure_url": result["secure_url"], "public_id": result.get("public_id")}
 
 @app.post(f"{settings.api_prefix}/campaigns", response_model=CampaignOut)
-def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     if not payload.image_url.startswith("https://"):
         raise HTTPException(400, "Campaign image URL must be a public HTTPS URL accessible by Meta")
     campaign = Campaign(**payload.model_dump(), user_id=user.id)
@@ -152,7 +152,7 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user
     return campaign
 
 @app.get(f"{settings.api_prefix}/campaigns", response_model=list[CampaignOut])
-def list_campaigns(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_campaigns(db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     return list(db.scalars(select(Campaign).where(Campaign.user_id == user.id).order_by(Campaign.created_at.desc()).limit(100)))
 
 async def run_campaign(campaign_id: int, user_id: int):
@@ -179,7 +179,7 @@ async def run_campaign(campaign_id: int, user_id: int):
         db.close()
 
 @app.post(f"{settings.api_prefix}/campaigns/{{campaign_id}}/send")
-def start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     campaign = db.get(Campaign, campaign_id)
     if not campaign or campaign.user_id != user.id: raise HTTPException(404, "Campaign not found")
     if campaign.status in {"sending", "completed"}: raise HTTPException(409, "Campaign has already started")
@@ -191,7 +191,7 @@ def start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Sess
     return {"message": "Campaign queued", "campaign_id": campaign_id}
 
 @app.get(f"{settings.api_prefix}/campaigns/{{campaign_id}}/logs")
-def campaign_logs(campaign_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def campaign_logs(campaign_id: int, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     campaign = db.get(Campaign, campaign_id)
     if not campaign or campaign.user_id != user.id: raise HTTPException(404, "Campaign not found")
     logs = db.scalars(select(MessageLog).where(MessageLog.campaign_id == campaign_id).order_by(MessageLog.id.desc()).limit(1000))
