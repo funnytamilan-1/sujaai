@@ -142,7 +142,7 @@ async def run_campaign(campaign_id: int, user_id: int):
                 message_id = await send_image_template(contact.phone, campaign.template_name, campaign.language, campaign.image_url, campaign.body_text)
                 log.status = "sent"; log.provider_message_id = message_id
                 campaign.sent += 1
-            except WhatsAppError as exc:
+            except Exception as exc:
                 log.status = "failed"; log.error = str(exc)[:2000]
                 campaign.failed += 1
             db.commit()
