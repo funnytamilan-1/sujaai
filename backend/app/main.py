@@ -6,14 +6,14 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Backgroun
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select
 from openpyxl import load_workbook
 from app.config import settings
 from app.database import Base, engine, get_db, SessionLocal
 from app.models import User, Contact, Campaign, MessageLog
 from app.schemas import RegisterIn, LoginIn, TokenOut, UserOut, ContactOut, CampaignCreate, CampaignOut
 from app.security import hash_password, verify_password, create_access_token, get_current_user
-from app.whatsapp import send_image_template, WhatsAppError
+from app.whatsapp import send_image_template
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title=settings.app_name, version="1.0.0")
