@@ -6,12 +6,12 @@ class Settings(BaseSettings):
     app_name: str = "SUJAAI WhatsApp Campaign Manager"
     app_env: str = "development"
     api_prefix: str = "/api"
-    database_url: str = "sqlite:///./sujaai.db"
-    secret_key: str = "change-this-secret-in-production"
-    admin_email: str = ""
-    admin_password: str = ""
+    database_url: str = "postgresql://neondb_owner:npg_WKlRV28CiQpz@ep-empty-tooth-bbwpkbh3.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    secret_key: str = "sujai28uee3=0r4rrt5gog'isydfuwfrfoprefgwfo4r[epe4l3[edhygdsc5uqwgea7hteduyesgsftuiebehehiedhdhd"
+    admin_email: str = "adminsuja@gmail.com"
+    admin_password: str = "sujai10142027"
     access_token_expire_minutes: int = 720
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "https://sujaai.vercel.app/"
     upload_dir: str = "uploads"
     max_upload_mb: int = 8
     whatsapp_access_token: str = ""
