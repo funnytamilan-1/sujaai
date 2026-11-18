@@ -77,41 +77,109 @@ def me(user: User = Depends(get_admin_user)):
     return user
 
 @app.post(f"{settings.api_prefix}/contacts/import")
-async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(False), db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
-    if not file.filename or Path(file.filename).suffix.lower() not in {".xlsx", ".xlsm"}:
-        raise HTTPException(400, "Upload an .xlsx or .xlsm Excel file")
+async def import_contacts(
+    file: UploadFile = File(...),
+    opted_in: bool = Query(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin_user),
+):
+    filename = (file.filename or "").strip()
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".xlsx", ".xlsm"}:
+        raise HTTPException(400, "Unsupported file type. Please upload an Excel .xlsx or .xlsm file (not .xls or .csv).")
+
     content = await file.read()
+    if not content:
+        raise HTTPException(400, "The uploaded file is empty. Choose a valid Excel workbook.")
     if len(content) > settings.max_upload_mb * 1024 * 1024:
-        raise HTTPException(413, "File is too large")
+        raise HTTPException(413, f"File is too large. Maximum size is {settings.max_upload_mb} MB.")
+
+    workbook = None
     try:
-        workbook = load_workbook(filename=__import__("io").BytesIO(content), read_only=True, data_only=True)
+        import io
+
+        workbook = load_workbook(
+            filename=io.BytesIO(content),
+            read_only=True,
+            data_only=True,
+        )
         sheet = workbook.active
-        headers = [str(c.value or "").strip().lower() for c in next(sheet.iter_rows(min_row=1, max_row=1))]
-        candidates = [i for i, h in enumerate(headers) if h in {"mobile", "mobile number", "phone", "phone number", "whatsapp", "whatsapp number"}]
-        if not candidates:
-            raise HTTPException(400, "No Mobile/Phone column found in the first row")
-        phone_index = candidates[0]
-        name_index = next((i for i, h in enumerate(headers) if h in {"name", "customer", "customer name"}), None)
+        if sheet is None or sheet.max_row is None or sheet.max_row < 1:
+            raise HTTPException(400, "The Excel workbook has no rows. Add a header row and contact data.")
+
+        def clean_header(value) -> str:
+            return re.sub(r"[^a-z0-9]", "", str(value or "").strip().lower())
+
+        phone_headers = {
+            "mobile", "mobileno", "mobilenumber", "phone", "phoneno",
+            "phonenumber", "whatsapp", "whatsappno", "whatsappnumber",
+            "contact", "contactno", "contactnumber", "cell", "cellphone",
+            "cellnumber", "telephone", "telephoneno",
+        }
+        name_headers = {"name", "customer", "customername", "fullname", "contactname"}
+
+        header_row_index = None
+        phone_index = None
+        name_index = None
+        # Some spreadsheets have a title or blank rows above the actual column headings.
+        for row_number, row in enumerate(
+            sheet.iter_rows(min_row=1, max_row=min(sheet.max_row, 10), values_only=True),
+            start=1,
+        ):
+            normalized = [clean_header(value) for value in row]
+            matches = [i for i, value in enumerate(normalized) if value in phone_headers]
+            if matches:
+                header_row_index = row_number
+                phone_index = matches[0]
+                name_index = next((i for i, value in enumerate(normalized) if value in name_headers), None)
+                break
+
+        if phone_index is None or header_row_index is None:
+            raise HTTPException(
+                400,
+                "Phone column not found. In the first 10 rows, add a heading such as Mobile, Mobile Number, Phone, Phone Number, WhatsApp Number, or Contact Number.",
+            )
+
         added = skipped = invalid = 0
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            phone = normalize_phone(row[phone_index] if phone_index < len(row) else None)
+        for row in sheet.iter_rows(min_row=header_row_index + 1, values_only=True):
+            value = row[phone_index] if phone_index < len(row) else None
+            phone = normalize_phone(value)
             if not phone:
-                invalid += 1; continue
-            name = str(row[name_index] or "").strip()[:160] if name_index is not None and name_index < len(row) else ""
-            existing = db.scalar(select(Contact).where(Contact.phone == phone, Contact.user_id == user.id))
+                invalid += 1
+                continue
+
+            name_value = row[name_index] if name_index is not None and name_index < len(row) else ""
+            name = str(name_value or "").strip()[:160]
+            existing = db.scalar(
+                select(Contact).where(Contact.phone == phone, Contact.user_id == user.id)
+            )
             if existing:
                 skipped += 1
                 continue
+
             db.add(Contact(name=name, phone=phone, opted_in=opted_in, user_id=user.id))
             added += 1
+
         db.commit()
-        return {"added": added, "skipped": skipped, "invalid": invalid, "note": "Only mark opted_in=true when you have recorded customer permission."}
+        return {
+            "added": added,
+            "skipped": skipped,
+            "invalid": invalid,
+            "note": "Only mark opted_in=true when you have recorded customer permission.",
+        }
     except HTTPException:
         raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(400, f"Could not read Excel file: {exc}")
-    
+        raise HTTPException(
+            400,
+            "Could not read this Excel workbook. Re-save it as .xlsx in Excel or LibreOffice and try again. "
+            f"Details: {type(exc).__name__}",
+        )
+    finally:
+        if workbook is not None:
+            workbook.close()
+
 @app.get(f"{settings.api_prefix}/contacts", response_model=list[ContactOut])
 def list_contacts(db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     return list(db.scalars(select(Contact).where(Contact.user_id == user.id).order_by(Contact.created_at.desc()).limit(1000)))
