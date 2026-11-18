@@ -52,13 +52,28 @@ export default function App() {
     finally { setLoading(false); }
   };
   useEffect(()=>{ if(authed) void refresh(); },[authed]);
-  async function importExcel(e:React.FormEvent) {
+  async function importExcel(e:FormEvent) {
     e.preventDefault(); if(!importFile) return;
     const form = new FormData(); form.append("file",importFile);
     try { const result = await request<{added:number;skipped:number;invalid:number}>(`/contacts/import?opted_in=${consent}`,{method:"POST",body:form}); setNotice(`Imported ${result.added} contacts · ${result.skipped} duplicates · ${result.invalid} invalid`); setImportFile(null); await refresh(); }
     catch(err) { setError(err instanceof Error?err.message:"Import failed"); }
   }
-  async function createCampaign(e:React.FormEvent) {
+  async function uploadCampaignImage(file:File) {
+    const form = new FormData();
+    form.append("file", file);
+    setImageUploading(true);
+    setError("");
+    try {
+      const result = await request<{secure_url:string}>("/media", {method:"POST", body:form});
+      setImageUrl(result.secure_url);
+      setNotice("Image uploaded successfully.");
+    } catch(err) {
+      setError(err instanceof Error ? err.message : "Image upload failed");
+    } finally {
+      setImageUploading(false);
+    }
+  }
+  async function createCampaign(e:FormEvent) {
     e.preventDefault(); setCreating(true); setError(""); setNotice("");
     try { await request("/campaigns",{method:"POST",body:JSON.stringify({name:campaignName,template_name:template,language,image_url:imageUrl,body_text:bodyText})}); setNotice("Campaign saved. Review the template and send when ready."); setCampaignName(""); setTemplate(""); setImageUrl(""); setBodyText(""); await refresh(); }
     catch(err) { setError(err instanceof Error?err.message:"Could not create campaign"); }
