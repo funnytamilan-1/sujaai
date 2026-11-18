@@ -31,7 +31,7 @@ npm run dev
 ```
 Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` to the backend. For Vercel, set the project Root Directory to `frontend`, Build Command to `npm run build`, Output Directory to `dist`, and `VITE_API_BASE_URL` to `https://YOUR_API_HOST/api` (no trailing slash). Add the Vercel domain to backend `CORS_ORIGINS`.
 
-## Configuration
+## Administrator-only access\n\nPublic registration is disabled. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend environment (Render environment variables in production). On first startup, the backend creates the administrator account if it does not already exist. Only that email can sign in; all protected dashboard APIs reject other accounts. Keep the administrator password private and use a long unique password.\n\nThe WhatsApp Cloud API credentials are configured once on the backend and shared by this single administrator workspace. They are never entered into or exposed by the frontend. This integration uses a WhatsApp Business Platform number, not a personal WhatsApp app account.\n\n## Configuration
 All backend settings are centralized in `backend/app/config.py` and loaded from environment variables. Never commit real tokens or passwords. See `backend/.env.example`.
 
 For dashboard image uploads, configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. You can alternatively paste an existing public HTTPS image URL into the campaign form.
@@ -47,7 +47,7 @@ For dashboard image uploads, configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_
 The sender only targets contacts whose WhatsApp consent is recorded as true. Campaign sends use approved templates; it does not automate a personal WhatsApp account or bypass WhatsApp policies. Messaging limits, template approval, quality rules, and pricing are controlled by Meta.
 
 ## Production notes
-- Set a strong `SECRET_KEY`, `APP_ENV=production`, `CORS_ORIGINS`, and a managed `DATABASE_URL` (PostgreSQL recommended).
+- Set `ADMIN_EMAIL` and `ADMIN_PASSWORD`, a strong `SECRET_KEY`, `APP_ENV=production`, `CORS_ORIGINS`, and a managed `DATABASE_URL` (PostgreSQL recommended).
 - Set `UPLOAD_DIR` to persistent storage or replace local media storage with private object storage.
 - Run behind HTTPS. Configure the WhatsApp webhook in Meta.
 - Add backups, monitoring, rate limits, and a production-grade secret manager before handling real customer data.
