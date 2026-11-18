@@ -1,4 +1,6 @@
 import re
+import hmac
+import hashlib
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,11 +76,11 @@ async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(F
             if not phone:
                 invalid += 1; continue
             name = str(row[name_index] or "").strip()[:160] if name_index is not None and name_index < len(row) else ""
-            existing = db.scalar(select(Contact).where(Contact.phone == phone))
+            existing = db.scalar(select(Contact).where(Contact.phone == phone, Contact.user_id == user.id))
             if existing:
                 skipped += 1
                 continue
-            db.add(Contact(name=name, phone=phone, opted_in=opted_in))
+            db.add(Contact(name=name, phone=phone, opted_in=opted_in, user_id=user.id))
             added += 1
         db.commit()
         return {"added": added, "skipped": skipped, "invalid": invalid, "note": "Only mark opted_in=true when you have recorded customer permission."}
@@ -90,11 +92,11 @@ async def import_contacts(file: UploadFile = File(...), opted_in: bool = Query(F
     
 @app.get(f"{settings.api_prefix}/contacts", response_model=list[ContactOut])
 def list_contacts(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return list(db.scalars(select(Contact).order_by(Contact.created_at.desc()).limit(1000)))
+    return list(db.scalars(select(Contact).where(Contact.user_id == user.id).order_by(Contact.created_at.desc()).limit(1000)))
 
 @app.patch(f"{settings.api_prefix}/contacts/{{contact_id}}/consent")
 def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    contact = db.get(Contact, contact_id)
+    contact = db.scalar(select(Contact).where(Contact.id == contact_id, Contact.user_id == user.id))
     if not contact: raise HTTPException(404, "Contact not found")
     contact.opted_in = opted_in
     db.commit()
@@ -117,21 +119,21 @@ async def upload_media(file: UploadFile = File(...), user: User = Depends(get_cu
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not payload.image_url.startswith("https://"):
         raise HTTPException(400, "Campaign image URL must be a public HTTPS URL accessible by Meta")
-    campaign = Campaign(**payload.model_dump())
+    campaign = Campaign(**payload.model_dump(), user_id=user.id)
     db.add(campaign); db.commit(); db.refresh(campaign)
     return campaign
 
 @app.get(f"{settings.api_prefix}/campaigns", response_model=list[CampaignOut])
 def list_campaigns(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return list(db.scalars(select(Campaign).order_by(Campaign.created_at.desc()).limit(100)))
+    return list(db.scalars(select(Campaign).where(Campaign.user_id == user.id).order_by(Campaign.created_at.desc()).limit(100)))
 
-async def run_campaign(campaign_id: int):
+async def run_campaign(campaign_id: int, user_id: int):
     db = SessionLocal()
     try:
         campaign = db.get(Campaign, campaign_id)
-        if not campaign: return
+        if not campaign or campaign.user_id != user_id: return
         campaign.status = "sending"; db.commit()
-        contacts = list(db.scalars(select(Contact).where(Contact.opted_in.is_(True))))
+        contacts = list(db.scalars(select(Contact).where(Contact.opted_in.is_(True), Contact.user_id == user_id)))
         campaign.total = len(contacts); db.commit()
         for contact in contacts:
             log = MessageLog(campaign_id=campaign.id, phone=contact.phone, status="queued")
@@ -151,18 +153,19 @@ async def run_campaign(campaign_id: int):
 @app.post(f"{settings.api_prefix}/campaigns/{{campaign_id}}/send")
 def start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     campaign = db.get(Campaign, campaign_id)
-    if not campaign: raise HTTPException(404, "Campaign not found")
+    if not campaign or campaign.user_id != user.id: raise HTTPException(404, "Campaign not found")
     if campaign.status in {"sending", "completed"}: raise HTTPException(409, "Campaign has already started")
     if not settings.whatsapp_configured: raise HTTPException(503, "Configure WhatsApp Cloud API credentials first")
-    if not db.scalar(select(Contact.id).where(Contact.opted_in.is_(True)).limit(1)):
+    if not db.scalar(select(Contact.id).where(Contact.opted_in.is_(True), Contact.user_id == user.id).limit(1)):
         raise HTTPException(400, "No opted-in contacts available")
     campaign.status = "queued"; db.commit()
-    background_tasks.add_task(run_campaign, campaign_id)
+    background_tasks.add_task(run_campaign, campaign_id, user.id)
     return {"message": "Campaign queued", "campaign_id": campaign_id}
 
 @app.get(f"{settings.api_prefix}/campaigns/{{campaign_id}}/logs")
 def campaign_logs(campaign_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if not db.get(Campaign, campaign_id): raise HTTPException(404, "Campaign not found")
+    campaign = db.get(Campaign, campaign_id)
+    if not campaign or campaign.user_id != user.id: raise HTTPException(404, "Campaign not found")
     logs = db.scalars(select(MessageLog).where(MessageLog.campaign_id == campaign_id).order_by(MessageLog.id.desc()).limit(1000))
     return [{"id": x.id, "phone": x.phone, "status": x.status, "error": x.error, "provider_message_id": x.provider_message_id} for x in logs]
 
@@ -175,7 +178,14 @@ def verify_webhook(request: Request):
 
 @app.post(f"{settings.api_prefix}/webhooks/whatsapp")
 async def receive_webhook(request: Request):
-    payload = await request.json()
+    raw_body = await request.body()
+    if settings.meta_app_secret:
+        signature = request.headers.get("X-Hub-Signature-256", "")
+        expected = "sha256=" + hmac.new(settings.meta_app_secret.encode(), raw_body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            raise HTTPException(401, "Invalid webhook signature")
+    import json
+    payload = json.loads(raw_body or b"{}")
     # Meta delivery status notifications can be mapped to MessageLog by provider_message_id.
     try:
         statuses = payload["entry"][0]["changes"][0]["value"].get("statuses", [])
