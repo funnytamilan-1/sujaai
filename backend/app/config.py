@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     max_upload_mb: int = 8
     whatsapp_access_token: str = ""
     whatsapp_phone_number_id: str = ""
-    whatsapp_graph_api_version: str = "v22.0"
+    whatsapp_graph_api_version: str = "v26.0"
     whatsapp_verify_token: str = ""
     meta_app_secret: str = ""
     cloudinary_cloud_name: str = ""
