@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
 
     # Supply these values through deployment environment variables.
-    database_url: str = "postgresql://neondb_owner:npg_WKlRV28CiQpz@ep-empty-tooth-bbwpkbh3.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-    secret_key: str = "ajkdsgwldascbfgrf8q7632121=';edjksjcpe93edd;edmjkhcvdgyu5a6ucdf43e3'][w9nxdety9wgt6vysl;;ZSUSUSUSUSUSUSUSUSUSUSUSUSUSUSU"
-    admin_email: str = "adminsuja@gmail.com"
-    admin_password: str = "sujaui00400450admin2027"
+    database_url: str
+    secret_key: str
+    admin_email: str = ""
+    admin_password: str = ""
 
     access_token_expire_minutes: int = 720
     cors_origins: str = "https://sujaai.vercel.app"
