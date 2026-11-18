@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     whatsapp_graph_api_version: str = "v22.0"
     whatsapp_verify_token: str = ""
     meta_app_secret: str = ""
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
