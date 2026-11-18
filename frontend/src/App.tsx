@@ -4,7 +4,8 @@ import { Activity, ArrowUpRight, BarChart3, Bell, CheckCircle2, FileSpreadsheet,
 
 type Contact = { id:number; name:string; phone:string; opted_in:boolean };
 type Campaign = { id:number; name:string; template_name:string; language:string; image_url:string; body_text:string; status:string; total:number; sent:number; failed:number; created_at:string };
-const API = import.meta.env.VITE_API_BASE_URL || "/api";
+const configuredApiBase = (import.meta.env.VITE_API_BASE_URL || "/api").trim().replace(/\\/+$/, "");
+const API = configuredApiBase === "/api" || configuredApiBase.endsWith("/api") ? configuredApiBase : `${configuredApiBase}/api`;
 const getToken = () => localStorage.getItem("sujaai_token") || "";
 
 async function request<T>(path:string, options:RequestInit = {}):Promise<T> {
