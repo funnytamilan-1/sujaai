@@ -21,6 +21,27 @@ app = FastAPI(title=settings.app_name, version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
+@app.on_event("startup")
+def ensure_single_admin():
+    # Bootstrap exactly one configured admin account. Public registration stays disabled.
+    if not settings.admin_email or not settings.admin_password:
+        return
+    db = SessionLocal()
+    try:
+        email = settings.admin_email.lower().strip()
+        admin = db.scalar(select(User).where(User.email == email))
+        if not admin:
+            admin = User(email=email, hashed_password=hash_password(settings.admin_password))
+            db.add(admin)
+            db.commit()
+    finally:
+        db.close()
+
+def get_admin_user(user: User = Depends(get_current_user)) -> User:
+    if not settings.admin_email or user.email.lower() != settings.admin_email.lower().strip():
+        raise HTTPException(403, "This website is restricted to the configured administrator.")
+    return user
+
 def normalize_phone(value) -> str | None:
     raw = str(int(value)) if isinstance(value, float) and value.is_integer() else str(value or "")
     digits = re.sub(r"\D", "", raw)
@@ -37,17 +58,16 @@ def health():
     return {"status": "ok", "whatsapp_configured": settings.whatsapp_configured}
 
 @app.post(f"{settings.api_prefix}/auth/register", response_model=UserOut)
-def register(payload: RegisterIn, db: Session = Depends(get_db)):
-    email = payload.email.lower()
-    if db.scalar(select(User).where(User.email == email)):
-        raise HTTPException(409, "Email already registered")
-    user = User(email=email, hashed_password=hash_password(payload.password))
-    db.add(user); db.commit(); db.refresh(user)
-    return user
+def register_disabled():
+    raise HTTPException(403, "Public registration is disabled. Only the configured administrator can use this website.")
 
 @app.post(f"{settings.api_prefix}/auth/login", response_model=TokenOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == payload.email.lower()))
+    if not settings.admin_email or not settings.admin_password:
+        raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL and ADMIN_PASSWORD on the server.")
+    if payload.email.lower() != settings.admin_email.lower().strip():
+        raise HTTPException(403, "This website is restricted to the administrator.")
+    user = db.scalar(select(User).where(User.email == settings.admin_email.lower().strip()))
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(401, "Incorrect email or password")
     return {"access_token": create_access_token(user.id)}
