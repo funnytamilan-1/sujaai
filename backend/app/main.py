@@ -21,7 +21,8 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allo
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
 def normalize_phone(value) -> str | None:
-    digits = re.sub(r"\D", "", str(value or ""))
+    raw = str(int(value)) if isinstance(value, float) and value.is_integer() else str(value or "")
+    digits = re.sub(r"\D", "", raw)
     if len(digits) < 10 or len(digits) > 15:
         return None
     return digits
