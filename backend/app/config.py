@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     database_url: str = "sqlite:///./sujaai.db"
     secret_key: str = "change-this-secret-in-production"
+    admin_email: str = ""
+    admin_password: str = ""
     access_token_expire_minutes: int = 720
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     upload_dir: str = "uploads"
