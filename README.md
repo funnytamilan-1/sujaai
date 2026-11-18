@@ -34,6 +34,8 @@ Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` 
 ## Configuration
 All backend settings are centralized in `backend/app/config.py` and loaded from environment variables. Never commit real tokens or passwords. See `backend/.env.example`.
 
+For dashboard image uploads, configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. You can alternatively paste an existing public HTTPS image URL into the campaign form.
+
 ## WhatsApp setup
 1. Create a Meta app and add the WhatsApp product.
 2. Configure a WhatsApp Business phone number and obtain a Phone Number ID and permanent access token.
