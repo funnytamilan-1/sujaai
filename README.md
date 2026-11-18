@@ -29,7 +29,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` to the backend.
+Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` to the backend. For Vercel, set the project Root Directory to `frontend`, Build Command to `npm run build`, Output Directory to `dist`, and `VITE_API_BASE_URL` to `https://YOUR_API_HOST/api` (no trailing slash). Add the Vercel domain to backend `CORS_ORIGINS`.
 
 ## Configuration
 All backend settings are centralized in `backend/app/config.py` and loaded from environment variables. Never commit real tokens or passwords. See `backend/.env.example`.
