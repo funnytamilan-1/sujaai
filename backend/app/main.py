@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from openpyxl import load_workbook
@@ -111,10 +112,16 @@ async def upload_media(file: UploadFile = File(...), user: User = Depends(get_cu
     content = await file.read()
     if len(content) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(413, "Image is too large")
-    filename = f"{__import__('uuid').uuid4().hex}{suffix}"
-    path = settings.upload_path / filename
-    path.write_bytes(content)
-    return {"filename": filename, "local_path": f"/uploads/{filename}", "message": "For Cloud API campaigns, use a publicly accessible HTTPS image URL in the campaign form."}
+    if not (settings.cloudinary_cloud_name and settings.cloudinary_api_key and settings.cloudinary_api_secret):
+        raise HTTPException(503, "Configure Cloudinary credentials to upload campaign images, or paste a public HTTPS image URL.")
+    import cloudinary
+    import cloudinary.uploader
+    cloudinary.config(cloud_name=settings.cloudinary_cloud_name, api_key=settings.cloudinary_api_key, api_secret=settings.cloudinary_api_secret, secure=True)
+    try:
+        result = await run_in_threadpool(cloudinary.uploader.upload, content, folder="sujaai/campaigns", resource_type="image")
+    except Exception as exc:
+        raise HTTPException(502, f"Image upload failed: {exc}")
+    return {"secure_url": result["secure_url"], "public_id": result.get("public_id")}
 
 @app.post(f"{settings.api_prefix}/campaigns", response_model=CampaignOut)
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
