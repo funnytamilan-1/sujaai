@@ -18,19 +18,17 @@ async function request<T>(path:string, options:RequestInit = {}):Promise<T> {
 }
 
 function Auth({ onLogin }: {onLogin:()=>void}) {
-  const [mode,setMode] = useState<"login"|"register">("login");
   const [email,setEmail] = useState(""); const [password,setPassword] = useState("");
   const [busy,setBusy] = useState(false); const [error,setError] = useState("");
   async function submit(e:FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
     try {
-      if (mode === "register") await request("/auth/register",{method:"POST",body:JSON.stringify({email,password})});
       const token = await request<{access_token:string}>("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
       localStorage.setItem("sujaai_token",token.access_token); onLogin();
     } catch(err) { setError(err instanceof Error ? err.message : "Something went wrong"); }
     finally { setBusy(false); }
   }
-  return <div className="auth-page"><div className="auth-art"><div className="brand-mark">S</div><span className="eyebrow">CAMPAIGN INTELLIGENCE</span><h1>Make every<br/>message count.</h1><p>One calm workspace for your contacts, campaigns and delivery insights.</p><div className="art-bubbles"><span>Excel import</span><span>Image + text</span><span>Delivery insights</span></div></div><form className="auth-card" onSubmit={submit}><div className="brand small"><span className="brand-mark">S</span><b>SUJAAI</b></div><h2>{mode==="login"?"Welcome back":"Create your workspace"}</h2><p className="muted">WhatsApp Campaign Manager</p><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com"/></label><label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters"/></label>{error&&<div className="error">{error}</div>}<button className="primary full" disabled={busy}>{busy?"Please wait…":mode==="login"?"Sign in":"Create account"}</button><p className="switch">{mode==="login"?"New to SUJAAI?":"Already have an account?"} <button type="button" onClick={()=>{setMode(mode==="login"?"register":"login");setError("");}}>{mode==="login"?"Create account":"Sign in"}</button></p><p className="tiny">Your workspace is private. Keep your login credentials secure.</p></form></div>;
+  return <div className="auth-page"><div className="auth-art"><div className="brand-mark">S</div><span className="eyebrow">CAMPAIGN INTELLIGENCE</span><h1>Make every<br/>message count.</h1><p>One calm workspace for your contacts, campaigns and delivery insights.</p><div className="art-bubbles"><span>Excel import</span><span>Image + text</span><span>Delivery insights</span></div></div><form className="auth-card" onSubmit={submit}><div className="brand small"><span className="brand-mark">S</span><b>SUJAAI</b></div><h2>Administrator sign in</h2><p className="muted">Private WhatsApp Campaign Manager</p><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com"/></label><label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters"/></label>{error&&<div className="error">{error}</div>}<button className="primary full" disabled={busy}>{busy?"Please wait…":"Sign in"}</button><p className="switch">Access is limited to the configured administrator account.</p><p className="tiny">Only the administrator can access this workspace. Keep your credentials secure.</p></form></div>;
 }
 
 export default function App() {
