@@ -16,10 +16,27 @@ from app.workspace_api import router as workspace_router
 from app.schemas import RegisterIn, LoginIn, TokenOut, UserOut, ContactOut, CampaignCreate, CampaignOut
 from app.security import hash_password, verify_password, create_access_token, get_current_user
 from app.whatsapp import send_image_template
+from app import ai_models  # register AI tables before metadata.create_all
+from app.ai_api import router as ai_router
 
 Base.metadata.create_all(bind=engine)
+from sqlalchemy import inspect
+def ensure_ai_conversation_columns():
+    existing = {column["name"] for column in inspect(engine).get_columns("ai_conversations")}
+    statements = [
+        ("title", "ALTER TABLE ai_conversations ADD COLUMN title VARCHAR(240) NOT NULL DEFAULT 'New conversation'"),
+        ("pinned", "ALTER TABLE ai_conversations ADD COLUMN pinned BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("archived", "ALTER TABLE ai_conversations ADD COLUMN archived BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("updated_at", "ALTER TABLE ai_conversations ADD COLUMN updated_at TIMESTAMP"),
+    ]
+    with engine.begin() as connection:
+        for column, statement in statements:
+            if column not in existing:
+                connection.exec_driver_sql(statement)
+ensure_ai_conversation_columns()
 app = FastAPI(title=settings.app_name, version="1.1.0")
 app.include_router(workspace_router)
+app.include_router(ai_router)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
@@ -65,8 +82,8 @@ def register_disabled():
 
 @app.post(f"{settings.api_prefix}/auth/login", response_model=TokenOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    if not settings.admin_email or not settings.admin_password:
-        raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL and ADMIN_PASSWORD on the server.")
+    if not settings.admin_email or not settings.admin_password or len(settings.secret_key) < 32:
+        raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL, ADMIN_PASSWORD and a SECRET_KEY of at least 32 characters on the server.")
     if payload.email.lower() != settings.admin_email.lower().strip():
         raise HTTPException(403, "This website is restricted to the administrator.")
     user = db.scalar(select(User).where(User.email == settings.admin_email.lower().strip()))
