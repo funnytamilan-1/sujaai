@@ -112,3 +112,26 @@ def test_json_backup_restore_only_into_empty_chit_database():
     assert restored.status_code == 200
     assert restored.json()["restored"] is True
     assert client.get("/api/chit/payments", headers=headers).json()[0]["notes"] == "Test backup"
+
+def test_period_report_and_excel_backup():
+    headers = owner_headers()
+    group = client.post("/api/chit/groups", headers=headers, json={
+        "group_code": "REPORT-G1", "name": "Report Group", "chit_type": "daily",
+        "default_amount": "100.00", "start_date": "2026-03-01"
+    })
+    member = client.post("/api/chit/members", headers=headers, json={
+        "member_code": "REPORT-M1", "group_id": group.json()["id"], "name": "Report Member",
+        "mobile": "+917777777777", "address": "Report address", "joining_date": "2026-03-01"
+    })
+    client.post("/api/chit/payments", headers=headers, json={
+        "member_id": member.json()["id"], "amount": "100.00",
+        "paid_at": "2026-03-02T08:00:00Z", "frequency": "daily"
+    })
+    periods = client.get("/api/chit/reports/periods?period=daily", headers=headers)
+    assert periods.status_code == 200
+    assert periods.json()[0]["total"] == "100.00"
+    workbook = client.get("/api/backup/excel", headers=headers)
+    assert workbook.status_code == 200
+    assert "spreadsheetml" in workbook.headers["content-type"]
+    bad_range = client.get("/api/chit/reports/summary?start=2026-03-03&end=2026-03-01", headers=headers)
+    assert bad_range.status_code == 422
