@@ -29,7 +29,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` to the backend. For Vercel, set the project Root Directory to `frontend`, Build Command to `npm run build`, Output Directory to `dist`, and `VITE_API_BASE_URL` to `https://YOUR_API_HOST/api` (no trailing slash). Add the Vercel domain to backend `CORS_ORIGINS`.
+Open the Vite URL (normally http://localhost:5173). The frontend proxies `/api` to the backend. For Vercel, set the project Root Directory to `frontend`, Build Command to `npm run build`, Output Directory to `dist`, and `VITE_API_BASE_URL` to the API origin such as `https://YOUR_API_HOST` (do not append `/api`). Add the Vercel domain to backend `CORS_ORIGINS`.
 
 ## Administrator-only access\n\nPublic registration is disabled. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend environment (Render environment variables in production). On first startup, the backend creates the administrator account if it does not already exist. Only that email can sign in; all protected dashboard APIs reject other accounts. Keep the administrator password private and use a long unique password.\n\nThe WhatsApp Cloud API credentials are configured once on the backend and shared by this single administrator workspace. They are never entered into or exposed by the frontend. This integration uses a WhatsApp Business Platform number, not a personal WhatsApp app account.\n\n## Configuration
 All backend settings are centralized in `backend/app/config.py` and loaded from environment variables. Never commit real tokens or passwords. See `backend/.env.example`.
@@ -118,3 +118,13 @@ The signed-in **Insurance AI** workspace is a full-screen conversational UI. It 
 - No MongoDB dependency was introduced because the existing project uses SQLAlchemy and changing databases would be an unnecessary data migration.
 
 Use the **Knowledge, models & training** link in the chat sidebar to return to the existing AI Control Center. Keep the AI worker running on a persistent host for semantic embedding indexing.
+
+## Chit Management (current main implementation)
+- Chit groups, member records, payment entry and searchable member lists.
+- Payment correction is restricted to owner/admin and writes before/after audit details. Payment deletion is intentionally not exposed.
+- Owner/admin/staff roles. The environment-configured administrator is the initial owner; owner/admin can create staff/admin accounts.
+- JSON backup and Excel workbook export. JSON restore is owner-only and only allowed when the chit tables are empty; restore is transactional.
+- Daily, weekly and monthly collection period reporting.
+- The Resume Designer and PVC Card Designer are browser-side print layouts. Use the browser print dialog and choose Save as PDF; PVC layout uses CR80 dimensions and includes QR and Code 128 barcode.
+- Existing deployments need the updated requirements installed and the new code deployed. SQLAlchemy create_all creates new tables but does not migrate existing columns; this release adds a new user table and does not intentionally rename or delete existing chit tables. Take a database backup before deployment.
+- For PostgreSQL production, set DATABASE_URL, SECRET_KEY, ADMIN_EMAIL, ADMIN_PASSWORD and CORS_ORIGINS in Render. Set VITE_API_BASE_URL in Vercel to the backend origin. Never paste secrets into GitHub source or chat.

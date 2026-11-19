@@ -177,7 +177,7 @@ def summary(start:date|None=None,end:date|None=None,db:Session=Depends(get_db),u
 
 @app.get("/api/chit/reports/periods")
 def period_report(period:str=Query("monthly",pattern="^(daily|weekly|monthly)$"),start:date|None=None,end:date|None=None,db:Session=Depends(get_db),user=Depends(current_user)):
-    bucket=func.date(models.ChitPayment.paid_at) if period=="daily" else func.strftime("%Y-%W",models.ChitPayment.paid_at) if period=="weekly" and engine.dialect.name=="sqlite" else func.strftime("%Y-%m",models.ChitPayment.paid_at) if period=="monthly" and engine.dialect.name=="sqlite" else func.date_trunc(period,models.ChitPayment.paid_at)
+    bucket=func.date(models.ChitPayment.paid_at) if period=="daily" else func.strftime("%Y-%W",models.ChitPayment.paid_at) if period=="weekly" and engine.dialect.name=="sqlite" else func.strftime("%Y-%m",models.ChitPayment.paid_at) if period=="monthly" and engine.dialect.name=="sqlite" else func.date_trunc({"daily":"day","weekly":"week","monthly":"month"}[period],models.ChitPayment.paid_at)
     stmt=select(bucket.label("period"),func.sum(models.ChitPayment.amount).label("total"),func.count(models.ChitPayment.id).label("entries")).group_by(bucket).order_by(bucket)
     if start: stmt=stmt.where(models.ChitPayment.paid_at>=datetime.combine(start,time.min).replace(tzinfo=timezone.utc))
     if end: stmt=stmt.where(models.ChitPayment.paid_at<datetime.combine(end+timedelta(days=1),time.min).replace(tzinfo=timezone.utc))

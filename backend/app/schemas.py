@@ -94,6 +94,7 @@ class UserCreate(BaseModel):
     role: Literal["admin", "staff"] = "staff"
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     email: str
     role: str
