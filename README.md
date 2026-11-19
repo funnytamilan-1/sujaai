@@ -7,8 +7,8 @@ SUJAAI's current `main` branch contains a React web workspace and FastAPI backen
 ## Implemented modules
 
 - **Dashboard:** collection totals, group/member counts and payment counts.
-- **Chit groups:** create groups, set daily/weekly/monthly frequency and contribution, pause/reactivate groups.
-- **Members:** register, search, filter and activate/deactivate members.
+- **Chit groups:** create and edit groups, set daily/weekly/monthly frequency and contribution, pause/reactivate or complete groups.
+- **Members:** register, search, filter, edit profile details and activate/deactivate members.
 - **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. A per-payment Excel record is downloaded automatically after a successful payment entry. Deletion is intentionally unavailable.
 - **Audit log:** group/member/payment/user/backup events; payment corrections include before/after values.
 - **Reports:** daily, weekly and monthly collection summaries, date filters and group totals.

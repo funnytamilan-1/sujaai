@@ -39,6 +39,7 @@ class MemberOut(BaseModel):
     address: str
     joining_date: date
     status: str
+    notes: str | None = None
 
 class PaymentCreate(BaseModel):
     member_id: int
