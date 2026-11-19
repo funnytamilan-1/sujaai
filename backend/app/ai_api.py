@@ -94,7 +94,8 @@ async def upload_document(file:UploadFile=File(...),db:Session=Depends(get_db),u
         extracted=clean_text(extract_text(str(path),suffix))
         if not extracted: raise ValueError("No readable text found")
         doc.extracted_chars=len(extracted);doc.status="extracted"
-        for part in chunk_text(extracted[:500000]):\n            db.add(AIChunk(user_id=user.id,document_id=doc.id,text=part))
+        for part in chunk_text(extracted[:500000]):
+            db.add(AIChunk(user_id=user.id,document_id=doc.id,text=part))
         audit(db,user,"document.uploaded","document",doc.id);db.commit()
         return {"id":doc.id,"filename":name,"status":doc.status,"characters":doc.extracted_chars,"approval_required":True}
     except Exception as exc:
