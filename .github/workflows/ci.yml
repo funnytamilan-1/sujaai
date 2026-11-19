@@ -7,6 +7,12 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      DATABASE_URL: sqlite:///./ci.db
+      SECRET_KEY: ci-only-secret-key-not-used-in-production-123456
+      ADMIN_EMAIL: admin@example.test
+      ADMIN_PASSWORD: ci-only-test-password
     defaults:
       run:
         working-directory: backend
