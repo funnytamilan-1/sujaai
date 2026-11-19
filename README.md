@@ -9,7 +9,7 @@ SUJAAI's current `main` branch contains a React web workspace and FastAPI backen
 - **Dashboard:** collection totals, group/member counts and payment counts.
 - **Chit groups:** create groups, set daily/weekly/monthly frequency and contribution, pause/reactivate groups.
 - **Members:** register, search, filter and activate/deactivate members.
-- **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. Deletion is intentionally unavailable.
+- **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. A per-payment Excel record is downloaded automatically after a successful payment entry. Deletion is intentionally unavailable.
 - **Audit log:** group/member/payment/user/backup events; payment corrections include before/after values.
 - **Reports:** daily, weekly and monthly collection summaries, date filters and group totals.
 - **Team access:** owner/admin/staff roles; owner/admin can create admin/staff accounts and deactivate accounts.
@@ -83,7 +83,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - `POST /api/auth/login`, `GET /api/auth/me`
 - `GET|POST|PATCH /api/chit/groups`
 - `GET|POST|PATCH /api/chit/members`
-- `GET|POST|PATCH /api/chit/payments`
+- `GET|POST|PATCH /api/chit/payments`; `GET /api/chit/payments/{id}/excel`
 - `GET /api/chit/reports/summary`, `GET /api/chit/reports/periods`
 - `GET|POST /api/users`, `PATCH /api/users/{id}`
 - `GET /api/backup/json`, `POST /api/backup/json/restore`, `GET /api/backup/excel`

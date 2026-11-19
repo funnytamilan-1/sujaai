@@ -156,6 +156,35 @@ def list_payments(member_id:int|None=None,group_id:int|None=None,start:date|None
     if end: stmt=stmt.where(models.ChitPayment.paid_at<datetime.combine(end+timedelta(days=1),time.min).replace(tzinfo=timezone.utc))
     return db.scalars(stmt.order_by(models.ChitPayment.paid_at.desc()).offset(offset).limit(limit)).all()
 
+@app.get("/api/chit/payments/{payment_id}/excel")
+def export_payment_excel(payment_id:int,db:Session=Depends(get_db),user=Depends(current_user)):
+    payment=payment_or_404(db,payment_id)
+    member=member_or_404(db,payment.member_id)
+    group=group_or_404(db,member.group_id)
+    wb=Workbook()
+    sheet=wb.active
+    sheet.title="Payment"
+    sheet.append(["SUJAAI PAYMENT RECORD",""])
+    sheet.append(["Payment reference",payment.payment_ref])
+    sheet.append(["Member ID",member.member_code])
+    sheet.append(["Member name",member.name])
+    sheet.append(["Group",group.name])
+    sheet.append(["Amount (INR)",float(payment.amount)])
+    sheet.append(["Paid at",payment.paid_at.isoformat()])
+    sheet.append(["Frequency",payment.frequency])
+    sheet.append(["Recorded by",payment.recorded_by])
+    sheet.append(["Notes",payment.notes or ""])
+    for cell in sheet[1]:
+        cell.font=Font(bold=True,color="FFFFFF")
+        cell.fill=PatternFill("solid",fgColor="176B4A")
+    sheet.column_dimensions["A"].width=24
+    sheet.column_dimensions["B"].width=42
+    stream=BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    safe_ref="".join(ch for ch in payment.payment_ref if ch.isalnum() or ch in "-_")
+    return StreamingResponse(stream,media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",headers={"Content-Disposition":f"attachment; filename={safe_ref}.xlsx"})
+
 @app.patch("/api/chit/payments/{payment_id}",response_model=schemas.PaymentOut)
 def correct_payment(payment_id:int,payload:schemas.PaymentUpdate,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin"))):
     item=payment_or_404(db,payment_id)
