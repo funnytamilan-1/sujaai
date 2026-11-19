@@ -12,7 +12,8 @@ export default function AIChatPlatform({request,onOpenControlCenter}:{request:Re
  const [loading,setLoading]=useState(false),[streaming,setStreaming]=useState(false),[error,setError]=useState(""),[sidebar,setSidebar]=useState(true),[archived,setArchived]=useState(false),[files,setFiles]=useState<File[]>([]),[status,setStatus]=useState("");
  const [dark,setDark]=useState(false),[font,setFont]=useState("normal"),[showSettings,setShowSettings]=useState(false);
  const scrollRef=useRef<HTMLDivElement>(null),abortRef=useRef<AbortController|null>(null),fileRef=useRef<HTMLInputElement>(null);
- const apiBase=String(import.meta.env.VITE_API_BASE_URL||"/api").trim().replace(/\/+$/,"");
+ const configuredApiBase=String(import.meta.env.VITE_API_BASE_URL||"/api").trim().replace(/\/+$/, "");
+ const apiBase=configuredApiBase==="/api"||configuredApiBase.endsWith("/api")?configuredApiBase:`${configuredApiBase}/api`;
  const token=()=>localStorage.getItem("sujaai_token")||"";
  async function loadChats(){try{const rows=await request<ChatItem[]>("ai/conversations?archived="+archived);setChats(rows);}catch(e){setError(e instanceof Error?e.message:"Unable to load chat history");}}
  async function loadModels(){try{setModels(await request<ChatModel[]>("ai/models"));}catch(e){setError(e instanceof Error?e.message:"Unable to load models");}}
