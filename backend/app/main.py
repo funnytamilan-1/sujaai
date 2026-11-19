@@ -42,7 +42,7 @@ app.add_middleware(
     allow_origins=settings.cors_origin_list,
     # Permit the production alias and SUJAAI's Vercel preview aliases.
     # Anchored to the exact project prefix and vercel.app domain.
-    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\\.vercel\\.app$",
+    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
