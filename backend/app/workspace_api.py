@@ -64,7 +64,7 @@ def update_record(record_id: int, payload: dict, db: Session = Depends(get_db), 
     if not isinstance(data, dict):
         raise HTTPException(422, "Record data must be an object")
     encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    if len(encoded.encode("utf-8")) > 100_000:
+    if len(encoded.encode("utf-8")) > WORKSPACE_MAX_RECORD_BYTES:
         raise HTTPException(413, "Record data is too large. Store images as files, not embedded base64.")
     record.title = str(payload.get("title", record.title)).strip()[:200] or "Untitled"
     record.data_json = encoded
@@ -92,13 +92,13 @@ def restore_backup(payload: dict, db: Session = Depends(get_db), user: User = De
         raise HTTPException(400, "Unsupported backup format")
     records = payload.get("records")
     if not isinstance(records, list) or len(records) > WORKSPACE_MAX_BACKUP_RECORDS:
-        raise HTTPException(400, "Backup must contain at most 5000 records")
+        raise HTTPException(400, f"Backup must contain at most {WORKSPACE_MAX_BACKUP_RECORDS} records")
     created = []
     for item in records:
         if not isinstance(item, dict) or item.get("type") not in ALLOWED_TYPES or not isinstance(item.get("data", {}), dict):
             raise HTTPException(400, "Backup contains an invalid record")
         encoded = json.dumps(item.get("data", {}), ensure_ascii=False, separators=(",", ":"))
-        if len(encoded.encode("utf-8")) > 100_000:
+        if len(encoded.encode("utf-8")) > WORKSPACE_MAX_RECORD_BYTES:
             raise HTTPException(413, "A backup record is too large")
         created.append(WorkspaceRecord(user_id=user.id, record_type=item["type"],
             title=str(item.get("title", "Restored record")).strip()[:200] or "Restored record", data_json=encoded))
@@ -108,8 +108,8 @@ def restore_backup(payload: dict, db: Session = Depends(get_db), user: User = De
 @router.post(f"{settings.api_prefix}/workspace/media")
 async def upload_workspace_image(file: UploadFile = File(...), user: User = Depends(require_admin)):
     raw = await file.read()
-    if not raw or len(raw) > 8 * 1024 * 1024:
-        raise HTTPException(413, "Choose an image smaller than 8 MB")
+    if not raw or len(raw) > WORKSPACE_UPLOAD_MAX_MB * 1024 * 1024:
+        raise HTTPException(413, f"Choose an image smaller than {WORKSPACE_UPLOAD_MAX_MB} MB")
     try:
         image = Image.open(io.BytesIO(raw))
         image.verify()
