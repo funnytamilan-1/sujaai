@@ -1,13 +1,18 @@
 import json
+import io
+import os
+from pathlib import Path
+from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import User, WorkspaceRecord
-from app.security import get_current_user
+from app.security import get_current_user, create_access_token
+from PIL import Image, UnidentifiedImageError
 
 router = APIRouter()
 ALLOWED_TYPES = {"customer", "chit_group", "chit_payment", "receipt", "resume", "id_card"}
@@ -122,3 +127,25 @@ async def upload_workspace_image(file: UploadFile = File(...), user: User = Depe
     target = folder / filename
     target.write_bytes(raw)
     return {"url": f"/uploads/studio/{filename}", "width": image.width, "height": image.height}
+
+@router.post(f"{settings.api_prefix}/auth/google")
+def google_admin_login(payload: dict, db: Session = Depends(get_db)):
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    credential = payload.get("credential")
+    if not client_id:
+        raise HTTPException(503, "Google login is not configured. Set GOOGLE_CLIENT_ID on the backend.")
+    if not isinstance(credential, str) or not credential:
+        raise HTTPException(400, "A Google ID token is required.")
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+        claims = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
+    except Exception:
+        raise HTTPException(401, "Google sign-in could not be verified.")
+    email = str(claims.get("email", "")).lower().strip()
+    if not claims.get("email_verified") or not settings.admin_email or email != settings.admin_email.lower().strip():
+        raise HTTPException(403, "This Google account is not the configured workspace administrator.")
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(403, "The configured administrator account has not been initialized.")
+    return {"access_token": create_access_token(user.id), "token_type": "bearer"}
