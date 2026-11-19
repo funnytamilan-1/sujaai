@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import User
 from app.security import get_current_user
 from app.ai_models import AIDocument, AIKnowledge, AIChunk, AITrainingJob, AIModelVersion, AIConversation, AIFeedback, AIAuditLog
-from app.ai_service import extract_text, clean_text, retrieve
+from app.ai_service import extract_text, clean_text, chunk_text, retrieve
 
 router=APIRouter(prefix="/api/ai",tags=["SUJA Insurance AI"])
 CATEGORIES=["Life Insurance","Health Insurance","Motor Insurance","Vehicle Insurance","Term Insurance","General Insurance","Premium Information","Policy Details","Renewal Information","Claims Process","Insurance Documents","Customer FAQs","Insurance Regulations"]
@@ -94,7 +94,7 @@ async def upload_document(file:UploadFile=File(...),db:Session=Depends(get_db),u
         extracted=clean_text(extract_text(str(path),suffix))
         if not extracted: raise ValueError("No readable text found")
         doc.extracted_chars=len(extracted);doc.status="extracted"
-        db.add(AIChunk(user_id=user.id,document_id=doc.id,text=extracted[:500000]))
+        for part in chunk_text(extracted[:500000]):\n            db.add(AIChunk(user_id=user.id,document_id=doc.id,text=part))
         audit(db,user,"document.uploaded","document",doc.id);db.commit()
         return {"id":doc.id,"filename":name,"status":doc.status,"characters":doc.extracted_chars,"approval_required":True}
     except Exception as exc:
