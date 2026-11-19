@@ -1,18 +1,19 @@
 import {useEffect,useRef,useState} from "react";
 import type {FormEvent,KeyboardEvent,DragEvent} from "react";
-import {ArrowUp,Archive,ChevronDown,Copy,FileText,MessageSquarePlus,MoreHorizontal,Paperclip,PanelLeftClose,PanelLeftOpen,Pin,Plus,RefreshCw,Search,Send,Settings2,ShieldCheck,Square,ThumbsDown,ThumbsUp,Trash2,X} from "lucide-react";
+import {ArrowLeft,ArrowUp,Archive,ChevronDown,Copy,FileText,MessageSquarePlus,MoreHorizontal,Paperclip,PanelLeftClose,PanelLeftOpen,Pin,Plus,RefreshCw,Search,Send,Settings2,Share2,ShieldCheck,Square,ThumbsDown,ThumbsUp,Trash2,X} from "lucide-react";
 
 type RequestFn=<T>(path:string,options?:RequestInit)=>Promise<T>;
 type ChatModel={id:string;name:string;description:string;available:boolean;version:string};
 type ChatItem={id:number;title:string;pinned:boolean;archived:boolean;updated_at:string};
 type Message={id:number;role:"user"|"assistant";content:string;sources:{source:string;chunk_id:number;score:number}[]};
-export default function AIChatPlatform({request,onOpenControlCenter}:{request:RequestFn;onOpenControlCenter:()=>void}){
+export default function AIChatPlatform({request,onBack,onOpenControlCenter}:{request:RequestFn;onBack:()=>void;onOpenControlCenter:()=>void}){
  const [chats,setChats]=useState<ChatItem[]>([]),[active,setActive]=useState<number|null>(null),[messages,setMessages]=useState<Message[]>([]);
  const [models,setModels]=useState<ChatModel[]>([]),[model,setModel]=useState("auto"),[draft,setDraft]=useState(""),[search,setSearch]=useState("");
  const [loading,setLoading]=useState(false),[streaming,setStreaming]=useState(false),[error,setError]=useState(""),[sidebar,setSidebar]=useState(true),[archived,setArchived]=useState(false),[files,setFiles]=useState<File[]>([]),[status,setStatus]=useState("");
  const [dark,setDark]=useState(false),[font,setFont]=useState("normal"),[showSettings,setShowSettings]=useState(false);
  const scrollRef=useRef<HTMLDivElement>(null),abortRef=useRef<AbortController|null>(null),fileRef=useRef<HTMLInputElement>(null);
- const apiBase=String(import.meta.env.VITE_API_BASE_URL||"/api").trim().replace(/\/+$/,"");
+ const configuredApiBase=String(import.meta.env.VITE_API_BASE_URL||"/api").trim().replace(/\/+$/, "");
+ const apiBase=configuredApiBase==="/api"||configuredApiBase.endsWith("/api")?configuredApiBase:`${configuredApiBase}/api`;
  const token=()=>localStorage.getItem("sujaai_token")||"";
  async function loadChats(){try{const rows=await request<ChatItem[]>("ai/conversations?archived="+archived);setChats(rows);}catch(e){setError(e instanceof Error?e.message:"Unable to load chat history");}}
  async function loadModels(){try{setModels(await request<ChatModel[]>("ai/models"));}catch(e){setError(e instanceof Error?e.message:"Unable to load models");}}
@@ -48,6 +49,14 @@ export default function AIChatPlatform({request,onOpenControlCenter}:{request:Re
  function onDrop(e:DragEvent){e.preventDefault();void uploadFiles(e.dataTransfer.files);}
  async function regenerate(){if(!active||streaming)return;setStreaming(true);try{const r=await request<{answer:string;sources:Message["sources"]}>("ai/chat/regenerate",{method:"POST",body:JSON.stringify({conversation_id:active})});setMessages(prev=>[...prev,{id:Date.now(),role:"assistant",content:r.answer,sources:r.sources}]);}catch(e){setError(e instanceof Error?e.message:"Regeneration failed");}finally{setStreaming(false);}}
  async function feedback(messageId:number,rating:number){if(!active)return;try{await request("ai/feedback",{method:"POST",body:JSON.stringify({conversation_id:active,rating,comment:"Message "+messageId})});setStatus("Feedback saved.");}catch(e){setError(e instanceof Error?e.message:"Feedback failed");}}
+ async function shareConversation(){
+  const transcript=messages.map(m=>(m.role==="user"?"You":"SUJA AI")+"\n"+m.content).join("\n\n").trim();
+  if(!transcript){setError("There is no conversation to share yet.");return;}
+  try{
+   if(typeof navigator.share==="function") await navigator.share({title:"SUJAAI conversation",text:transcript});
+   else {await navigator.clipboard.writeText(transcript);setStatus("Conversation copied. You can paste and share it.");}
+  }catch(e){if(e instanceof Error&&e.name!=="AbortError")setError("Could not share this conversation. Try copying a message instead.");}
+ }
  function submitKey(e:KeyboardEvent<HTMLTextAreaElement>){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}
  const pinned=chats.filter(c=>c.pinned),recent=chats.filter(c=>!c.pinned);
  return <div className={"suja-chat "+(dark?"dark":"")+" font-"+font} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
@@ -62,7 +71,7 @@ export default function AIChatPlatform({request,onOpenControlCenter}:{request:Re
    </div>
    <div className="chat-sidebar-bottom"><button onClick={()=>setArchived(v=>!v)}><Archive size={16}/>{archived?"Active chats":"Archived chats"}</button><button onClick={onOpenControlCenter}><ShieldCheck size={16}/> Knowledge, models & training</button><button onClick={()=>setShowSettings(v=>!v)}><Settings2 size={16}/> Settings</button><div className="chat-profile"><span>S</span><div><b>Workspace admin</b><small>Administrator</small></div></div></div>
   </aside>}
-  <main className="chat-main"><header className="chat-top"><button className="chat-plain" onClick={()=>setSidebar(v=>!v)}>{sidebar?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button><div className="chat-model-wrap"><select aria-label="Select AI model" value={model} onChange={e=>setModel(e.target.value)}>{models.map(m=><option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available?" · "+m.version:" · unavailable"}</option>)}</select><ChevronDown size={14}/></div><span className="chat-top-label">Insurance intelligence</span><button className="chat-plain" onClick={()=>setShowSettings(v=>!v)}><Settings2 size={17}/></button></header>
+  <main className="chat-main"><header className="chat-top"><button className="chat-plain" onClick={onBack} title="Back to workspace"><ArrowLeft size={18}/></button><button className="chat-plain" onClick={()=>setSidebar(v=>!v)}>{sidebar?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button><div className="chat-model-wrap"><select aria-label="Select AI model" value={model} onChange={e=>setModel(e.target.value)}>{models.map(m=><option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available?" · "+m.version:" · unavailable"}</option>)}</select><ChevronDown size={14}/></div><span className="chat-top-label">Insurance intelligence</span><button className="chat-plain" onClick={()=>void shareConversation()} title="Share conversation"><Share2 size={17}/></button><button className="chat-plain" onClick={()=>setShowSettings(v=>!v)} title="Chat settings"><Settings2 size={17}/></button></header>
    {showSettings&&<div className="chat-settings"><label><input type="checkbox" checked={dark} onChange={e=>setDark(e.target.checked)}/> Dark mode</label><label>Font size <select value={font} onChange={e=>setFont(e.target.value)}><option value="small">Small</option><option value="normal">Normal</option><option value="large">Large</option></select></label></div>}
    <div className="chat-scroll" ref={scrollRef}>
     {!messages.length&&!loading?<div className="chat-welcome"><div className="welcome-symbol"><ShieldCheck size={25}/></div><h1>How can I help you today?</h1><p>Your intelligent insurance assistant.</p><div className="chat-suggestions">{["Explain health insurance waiting periods","What documents are needed for a claim?","Explain policy renewal in simple Tamil","Compare approved policy features"].map(q=><button key={q} onClick={()=>setDraft(q)}>{q}<ArrowUp size={14}/></button>)}</div></div>:<div className="chat-messages">{messages.map(m=><article className={"chat-message "+m.role} key={m.id}><div className="message-avatar">{m.role==="assistant"?"S":"A"}</div><div className="message-body"><div className="message-role">{m.role==="assistant"?"SUJA INSURANCE AI":"You"}</div><div className="message-content">{m.content||" "}{m.role==="assistant"&&streaming&&m===messages[messages.length-1]&&<span className="typing-cursor"/>}</div>{m.sources?.length>0&&<div className="message-sources"><b>Sources used</b>{m.sources.map(s=><span key={s.chunk_id}> {s.source} · match {Number(s.score).toFixed(2)}</span>)}</div>}{m.role==="assistant"&&m.content&&<div className="message-actions"><button title="Copy" onClick={()=>void navigator.clipboard.writeText(m.content)}><Copy size={14}/></button><button title="Helpful" onClick={()=>void feedback(m.id,5)}><ThumbsUp size={14}/></button><button title="Not helpful" onClick={()=>void feedback(m.id,1)}><ThumbsDown size={14}/></button>{m===messages[messages.length-1]&&!streaming&&<button title="Regenerate" onClick={()=>void regenerate()}><RefreshCw size={14}/></button>}</div>}</div></article>)}</div>}

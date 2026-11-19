@@ -37,7 +37,16 @@ ensure_ai_conversation_columns()
 app = FastAPI(title=settings.app_name, version="1.1.0")
 app.include_router(workspace_router)
 app.include_router(ai_router)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    # Permit the production alias and SUJAAI's Vercel preview aliases.
+    # Anchored to the exact project prefix and vercel.app domain.
+    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
 @app.on_event("startup")
@@ -53,6 +62,17 @@ def ensure_single_admin():
             admin = User(email=email, hashed_password=hash_password(settings.admin_password))
             db.add(admin)
             db.commit()
+        else:
+            # Environment credentials are the source of truth. Keep the stored
+            # hash synchronized so changing ADMIN_PASSWORD does not cause a
+            # permanent 401 for an otherwise correct administrator login.
+            try:
+                password_matches = verify_password(settings.admin_password, admin.hashed_password)
+            except (ValueError, TypeError):
+                password_matches = False
+            if not password_matches:
+                admin.hashed_password = hash_password(settings.admin_password)
+                db.commit()
     finally:
         db.close()
 
@@ -84,10 +104,27 @@ def register_disabled():
 def login(payload: LoginIn, db: Session = Depends(get_db)):
     if not settings.admin_email or not settings.admin_password or len(settings.secret_key) < 32:
         raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL, ADMIN_PASSWORD and a SECRET_KEY of at least 32 characters on the server.")
-    if payload.email.lower() != settings.admin_email.lower().strip():
+    if payload.email.strip().lower() != settings.admin_email.lower().strip():
         raise HTTPException(403, "This website is restricted to the administrator.")
-    user = db.scalar(select(User).where(User.email == settings.admin_email.lower().strip()))
-    if not user or not verify_password(payload.password, user.hashed_password):
+    admin_email = settings.admin_email.lower().strip()
+    user = db.scalar(select(User).where(User.email == admin_email))
+    # Serverless instances may not run startup hooks consistently. Ensure the
+    # configured administrator exists and its stored hash matches the current
+    # server-side ADMIN_PASSWORD before checking the submitted password.
+    if not user:
+        user = User(email=admin_email, hashed_password=hash_password(settings.admin_password))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        try:
+            password_in_sync = verify_password(settings.admin_password, user.hashed_password)
+        except (ValueError, TypeError):
+            password_in_sync = False
+        if not password_in_sync:
+            user.hashed_password = hash_password(settings.admin_password)
+            db.commit()
+    if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(401, "Incorrect email or password")
     return {"access_token": create_access_token(user.id)}
 
@@ -211,6 +248,15 @@ def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db
     db.commit()
     return {"id": contact.id, "opted_in": contact.opted_in}
 
+@app.delete(f"{settings.api_prefix}/contacts/{'{'}contact_id{'}'}")
+def delete_contact(contact_id: int, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
+    contact = db.scalar(select(Contact).where(Contact.id == contact_id, Contact.user_id == user.id))
+    if not contact:
+        raise HTTPException(404, "Contact not found")
+    db.delete(contact)
+    db.commit()
+    return {"deleted": True, "contact_id": contact_id}
+
 @app.post(f"{settings.api_prefix}/media")
 async def upload_media(file: UploadFile = File(...), user: User = Depends(get_admin_user)):
     suffix = Path(file.filename or "").suffix.lower()
@@ -241,6 +287,17 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user
 @app.get(f"{settings.api_prefix}/campaigns", response_model=list[CampaignOut])
 def list_campaigns(db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     return list(db.scalars(select(Campaign).where(Campaign.user_id == user.id).order_by(Campaign.created_at.desc()).limit(100)))
+
+@app.delete(f"{settings.api_prefix}/campaigns/{'{'}campaign_id{'}'}")
+def delete_campaign(campaign_id: int, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
+    campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id, Campaign.user_id == user.id))
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+    if campaign.status in {"queued", "sending"}:
+        raise HTTPException(409, "A queued or sending campaign cannot be deleted")
+    db.delete(campaign)
+    db.commit()
+    return {"deleted": True, "campaign_id": campaign_id}
 
 async def run_campaign(campaign_id: int, user_id: int):
     db = SessionLocal()
@@ -313,3 +370,14 @@ async def receive_webhook(request: Request):
     except (KeyError, IndexError, TypeError):
         pass
     return {"status": "received"}
+
+# Keep CORS outside FastAPI's ServerErrorMiddleware so unhandled 500 responses
+# still carry the allowed-origin headers needed by browser clients.
+app = CORSMiddleware(
+    app,
+    allow_origins=settings.cors_origin_list,
+    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
