@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react";
 import type {FormEvent} from "react";
-import {BrainCircuit,BookOpen,FileUp,MessageSquare,Play,CheckCircle2,Clock3} from "lucide-react";
+import {BrainCircuit,FileUp,MessageSquare,Play,CheckCircle2} from "lucide-react";
 type Req=<T>(path:string,options?:RequestInit)=>Promise<T>;
 type Knowledge={id:number;title:string;category:string;question:string;answer:string;source:string;approval_status:string;version:number};
 type Doc={id:number;filename:string;status:string;extracted_chars:number};
