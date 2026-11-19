@@ -47,6 +47,9 @@ def test_chit_flow_and_payment_correction_audit():
     })
     assert payment.status_code == 201
     payment_id = payment.json()["id"]
+    receipt = client.get(f"/api/chit/payments/{payment_id}/excel", headers=headers)
+    assert receipt.status_code == 200
+    assert "spreadsheetml" in receipt.headers["content-type"]
     corrected = client.patch(f"/api/chit/payments/{payment_id}", headers=headers, json={"amount": "450.00"})
     assert corrected.status_code == 200
     assert corrected.json()["amount"] == "450.00"
@@ -81,3 +84,31 @@ def test_staff_token_is_rejected_after_deactivation():
     deactivated = client.patch(f"/api/users/{account_id}", headers=headers, json={"is_active": False})
     assert deactivated.status_code == 200
     assert client.get("/api/chit/groups", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+def test_json_backup_restore_only_into_empty_chit_database():
+    headers = owner_headers()
+    group = client.post("/api/chit/groups", headers=headers, json={
+        "group_code": "BACKUP-G1", "name": "Backup Group", "chit_type": "weekly",
+        "default_amount": "250.00", "start_date": "2026-02-01"
+    })
+    member = client.post("/api/chit/members", headers=headers, json={
+        "member_code": "BACKUP-M1", "group_id": group.json()["id"], "name": "Backup Member",
+        "mobile": "+918888888888", "address": "Backup address", "joining_date": "2026-02-01"
+    })
+    payment = client.post("/api/chit/payments", headers=headers, json={
+        "member_id": member.json()["id"], "amount": "250.00",
+        "paid_at": "2026-02-08T10:00:00Z", "frequency": "weekly", "notes": "Test backup"
+    })
+    assert payment.status_code == 201
+    backup = client.get("/api/backup/json", headers=headers)
+    assert backup.status_code == 200
+    payload = backup.json()
+    assert len(payload["groups"]) == 1
+    assert len(payload["members"]) == 1
+    assert len(payload["payments"]) == 1
+    # Empty only the isolated test database before validating restore.
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    restored = client.post("/api/backup/json/restore", headers=headers, json=payload)
+    assert restored.status_code == 200
+    assert restored.json()["restored"] is True
+    assert client.get("/api/chit/payments", headers=headers).json()[0]["notes"] == "Test backup"
