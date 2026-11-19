@@ -69,10 +69,24 @@ class AIConversation(Base):
     __tablename__ = "ai_conversations"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    question: Mapped[str] = mapped_column(Text)
-    answer: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(String(240), default="New conversation")
+    pinned: Mapped[bool] = mapped_column(default=False, index=True)
+    archived: Mapped[bool] = mapped_column(default=False, index=True)
+    question: Mapped[str] = mapped_column(Text, default="")
+    answer: Mapped[str] = mapped_column(Text, default="")
     sources_json: Mapped[str] = mapped_column(Text, default="[]")
     latency_ms: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+class AIChatMessage(Base):
+    __tablename__ = "ai_chat_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("ai_conversations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 class AIFeedback(Base):
