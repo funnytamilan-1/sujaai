@@ -16,10 +16,13 @@ from app.workspace_api import router as workspace_router
 from app.schemas import RegisterIn, LoginIn, TokenOut, UserOut, ContactOut, CampaignCreate, CampaignOut
 from app.security import hash_password, verify_password, create_access_token, get_current_user
 from app.whatsapp import send_image_template
+from app import ai_models  # register AI tables before metadata.create_all
+from app.ai_api import router as ai_router
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title=settings.app_name, version="1.1.0")
 app.include_router(workspace_router)
+app.include_router(ai_router)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
