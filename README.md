@@ -1,28 +1,28 @@
 # SUJAAI — Chit Management Suite
 
-SUJAAI's current `main` branch contains a React web workspace and FastAPI backend for chit-group administration. It is built around a SQL database and uses the database as the source of truth.
+SUJAAI's current `main` branch contains a React web workspace and FastAPI backend for chit-group administration. The configured SQL database is the source of truth for financial records.
 
-> Scope note: earlier README text described WhatsApp Campaign Manager and Insurance AI modules from a previous project state. Their source folders are not present in this current `main` branch, so those modules are not part of this build and are not represented as working features here.
+> **Scope note:** Previous README revisions described WhatsApp Campaign Manager and Insurance AI modules. Their source folders are not present in this current `main` branch, so those features are not included in this build and are not claimed as working.
 
-## Current features
+## Implemented modules
 
-- **Dashboard:** collection totals, group counts, member counts and payment counts.
+- **Dashboard:** collection totals, group/member counts and payment counts.
 - **Chit groups:** create groups, set daily/weekly/monthly frequency and contribution, pause/reactivate groups.
-- **Members:** register, search, filter, activate/deactivate and retain member history through payment records.
-- **Payments:** unique payment references, ledger, date/time, member/group linkage and controlled corrections. Payment deletion is intentionally not provided.
-- **Audit history:** records group/member/payment/user/backup actions; payment corrections store before/after values.
-- **Reports:** daily, weekly and monthly collection reports with date filters and group totals.
-- **Team access:** owner/admin/staff roles; owner/admin can create admin or staff accounts and deactivate accounts.
+- **Members:** register, search, filter and activate/deactivate members.
+- **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. Deletion is intentionally unavailable.
+- **Audit log:** group/member/payment/user/backup events; payment corrections include before/after values.
+- **Reports:** daily, weekly and monthly collection summaries, date filters and group totals.
+- **Team access:** owner/admin/staff roles; owner/admin can create admin/staff accounts and deactivate accounts.
 - **Backup:** Excel workbook with Summary, Groups, Members, Payments, Group Totals, Member Totals, Daily, Weekly and Monthly sheets; JSON export and owner-only JSON restore into an empty chit database.
-- **Resume Designer:** editable personal details, summary, skills, education, experience and projects; modern/classic/minimal preview; browser Print / Save as PDF.
-- **PVC Card Designer:** front/back card editor at CR80 size (85.6 × 54 mm), generated QR code and Code 128 barcode; browser Print / Save as PDF.
+- **Resume Designer:** editable profile, photo, summary, skills, languages, education, experience, projects and certifications; modern/classic/minimal layouts; browser Print / Save as PDF.
+- **PVC Card Designer:** front/back CR80 (85.6 × 54 mm) layout, editable details, optional photo/logo, generated QR code and Code 128 barcode; browser Print / Save as PDF.
 
 ## Technology
 
 - Frontend: React 18, TypeScript, Vite
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2
-- Database: SQLite for local development; PostgreSQL recommended for production
-- Authentication: 8-hour JWT; PBKDF2-SHA256 password hashes for team accounts
+- Database: SQLite local development; PostgreSQL recommended for production
+- Authentication: 8-hour JWT; PBKDF2-SHA256 hashes for team-account passwords
 - Excel: openpyxl
 
 ## Local development
@@ -41,12 +41,12 @@ uvicorn app.main:app --reload
 
 API documentation: `http://127.0.0.1:8000/docs`
 
-Set these values in `backend/.env` (never commit real values):
+Configure these values in `backend/.env` (never commit real credentials):
 
-- `SECRET_KEY`: random secret, at least 32 characters for production
+- `SECRET_KEY`: random secret; at least 32 characters in production
 - `ADMIN_EMAIL`: initial owner email
 - `ADMIN_PASSWORD`: strong unique owner password
-- `DATABASE_URL`: defaults to local SQLite; PostgreSQL URL for production
+- `DATABASE_URL`: local SQLite default or PostgreSQL connection URL
 - `CORS_ORIGINS`: comma-separated frontend origins
 
 ### Frontend
@@ -57,26 +57,26 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Vite proxies `/api` to `http://127.0.0.1:8000` in development.
+Open `http://localhost:5173`. Vite proxies `/api` to the backend in development. Copy `.env.example` to `.env.local` only if you want to set the API origin explicitly.
 
 ## Deployment
 
 ### Render backend
 
-- Create a Web Service from this repository; Docker runtime.
-- Set Root Directory to `backend`.
-- Health check path: `/api/health`.
+- Create a Docker Web Service from this repository.
+- Root Directory: `backend`.
+- Health check: `/api/health`.
 - Configure `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CORS_ORIGINS` and a strong `SECRET_KEY`.
 - Use managed PostgreSQL and HTTPS for production.
 
 ### Vercel frontend
 
-- Import the same repository.
-- Set Root Directory to `frontend`.
+- Import this repository.
+- Root Directory: `frontend`.
 - Build command: `npm run build`.
 - Output directory: `dist`.
-- Set `VITE_API_BASE_URL` to the backend origin, for example `https://your-api.onrender.com` (do not append `/api`).
-- Add the exact Vercel domain to backend `CORS_ORIGINS`.
+- Set `VITE_API_BASE_URL` to the backend origin, e.g. `https://your-api.onrender.com` (do not append `/api`).
+- Add the exact Vercel frontend origin to backend `CORS_ORIGINS`.
 
 ## API overview
 
@@ -89,12 +89,21 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://127.0.0.1:8000` in 
 - `GET /api/backup/json`, `POST /api/backup/json/restore`, `GET /api/backup/excel`
 - `GET /api/audit`
 
-## Data safety and limitations
+## Data safety
 
-- Take a database backup before deployment or schema changes.
-- SQLAlchemy `create_all` creates missing tables; it does not perform general schema migrations. The current addition introduces the `app_users` table and keeps the existing chit table definitions. Use a formal migration tool before future column-changing releases.
+- Take a database backup before deploying or changing schemas.
+- SQLAlchemy `create_all` creates missing tables; it does not perform general migrations. This change adds the `app_users` table and retains the existing chit table definitions. Use Alembic before future column-changing releases.
 - JSON restore is owner-only, transactional, and refuses to overwrite a non-empty chit database. It is not a merge operation.
-- Passwords for team accounts are hashed. The initial owner is configured through environment variables and is not stored as a plaintext database password.
-- Do not put production credentials in source files, issues, or chat. Rotate any credential that may have been committed in earlier repository history.
-- Browser PDF output and CR80 print alignment depend on the user's printer and print settings.
-- A deployment is not considered verified until CI/build checks pass and the deployed health endpoint is tested against the configured database.
+- Deactivated staff/admin accounts are rejected on subsequent authenticated API requests.
+- Payment corrections are audited; no payment delete endpoint is exposed.
+- Do not put production credentials in source files, GitHub issues, or chat. Rotate credentials that may have appeared in older Git history.
+- Resume/PVC content is kept in browser component state for this session. PDF output and physical card alignment depend on browser/printer settings.
+
+## Tests
+
+```bash
+cd backend
+pytest
+```
+
+The tests force an isolated local SQLite test database named `test_sujaai.db`; they do not use the configured production database.

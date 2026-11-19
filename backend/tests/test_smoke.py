@@ -1,8 +1,8 @@
 import os
-os.environ.setdefault("SECRET_KEY", "test-only-secret-key-not-for-production-123456789")
-os.environ.setdefault("ADMIN_EMAIL", "admin@example.test")
-os.environ.setdefault("ADMIN_PASSWORD", "test-only-password")
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test_sujaai.db")
+os.environ["SECRET_KEY"] = "test-only-secret-key-not-for-production-123456789"
+os.environ["ADMIN_EMAIL"] = "admin@example.test"
+os.environ["ADMIN_PASSWORD"] = "test-only-password"
+os.environ["DATABASE_URL"] = "sqlite:///./test_sujaai.db"
 
 import pytest
 from fastapi.testclient import TestClient
