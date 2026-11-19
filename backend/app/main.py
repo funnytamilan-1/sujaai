@@ -68,8 +68,8 @@ def register_disabled():
 
 @app.post(f"{settings.api_prefix}/auth/login", response_model=TokenOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    if not settings.admin_email or not settings.admin_password:
-        raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL and ADMIN_PASSWORD on the server.")
+    if not settings.admin_email or not settings.admin_password or len(settings.secret_key) < 32:
+        raise HTTPException(503, "Administrator login is not configured. Set ADMIN_EMAIL, ADMIN_PASSWORD and a SECRET_KEY of at least 32 characters on the server.")
     if payload.email.lower() != settings.admin_email.lower().strip():
         raise HTTPException(403, "This website is restricted to the administrator.")
     user = db.scalar(select(User).where(User.email == settings.admin_email.lower().strip()))
