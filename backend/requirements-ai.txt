@@ -1,6 +1,0 @@
-# Optional dependencies for the separate SUJA AI worker / semantic indexing.
-# Install on a persistent Python worker, not in Vercel serverless functions.
-pypdf>=5,<7
-python-docx>=1.1,<2
-sentence-transformers>=3.3,<6
-torch>=2.4,<3
