@@ -56,6 +56,7 @@ class PaymentOut(BaseModel):
     paid_at: datetime
     frequency: str
     recorded_by: str
+    notes: str | None = None
 
 class LoginRequest(BaseModel):
     email: str

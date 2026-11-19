@@ -20,7 +20,7 @@ export default function App(){
  const [page,setPage]=useState<Page>("dashboard"); const [dark,setDark]=useState(localStorage.getItem("sujaai_theme")==="dark");
  const [groups,setGroups]=useState<Group[]>([]); const [members,setMembers]=useState<Member[]>([]);
  const [payments,setPayments]=useState<Payment[]>([]); const [summary,setSummary]=useState<Summary|null>(null);
- const [users,setUsers]=useState<User[]>([]); const [periodRows,setPeriodRows]=useState<PeriodRow[]>([]);
+ const [users,setUsers]=useState<User[]>([]); const [periodRows,setPeriodRows]=useState<PeriodRow[]>([]); const [reportSummary,setReportSummary]=useState<Summary|null>(null);
  const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [search,setSearch]=useState(""); const [groupFilter,setGroupFilter]=useState<number| "">("");
  const [period,setPeriod]=useState("monthly"); const [reportStart,setReportStart]=useState(""); const [reportEnd,setReportEnd]=useState("");
@@ -31,7 +31,7 @@ export default function App(){
  const [editForm,setEditForm]=useState({amount:"",paid_at:"",notes:""});
  const [newUser,setNewUser]=useState({email:"",password:"",role:"staff"});
 
- const request=useCallback(async<T=any>(path:string,init:RequestInit={}):Promise<T>=>{
+ const request=useCallback(async <T = unknown,>(path:string,init:RequestInit={}):Promise<T>=>{
   const response=await fetch(API+path,{...init,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{}),...init.headers}});
   if(response.status===401){sessionStorage.removeItem("sujaai_token");setToken("");throw new Error("Session expired. Sign in again.");}
   const data=await response.json().catch(()=>({}));
@@ -50,7 +50,7 @@ export default function App(){
 
  const loadPeriod=useCallback(async()=>{
   const qs=new URLSearchParams({period});if(reportStart)qs.set("start",reportStart);if(reportEnd)qs.set("end",reportEnd);
-  setPeriodRows(await request<PeriodRow[]>(`/api/chit/reports/periods?${qs.toString()}`));
+  const dates=new URLSearchParams();if(reportStart)dates.set("start",reportStart);if(reportEnd)dates.set("end",reportEnd);\n  const [rows,sums]=await Promise.all([request<PeriodRow[]>(`/api/chit/reports/periods?${qs.toString()}`),request<Summary>(`/api/chit/reports/summary?${dates.toString()}`)]);setPeriodRows(rows);setReportSummary(sums);
  },[request,period,reportStart,reportEnd]);
 
  useEffect(()=>{if(token){refresh().catch(e=>setNotice(e.message));}},[token,refresh]);
@@ -69,7 +69,7 @@ export default function App(){
  async function createStaff(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/users",{method:"POST",body:JSON.stringify(newUser)});setNewUser({email:"",password:"",role:"staff"});await refresh();setNotice("User account created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  async function toggleUser(u:User){try{await request(`/api/users/${u.id}`,{method:"PATCH",body:JSON.stringify({is_active:!u.is_active})});await refresh();}catch(e){setNotice((e as Error).message);}}
 
- async function download(path:string,filename:string){try{const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}catch(e){setNotice((e as Error).message);}}
+ async function download(path:string,filename:string){try{const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){setNotice((e as Error).message);}}
  async function importBackup(file?:File){if(!file)return;setBusy(true);try{const parsed=JSON.parse(await file.text());if(!window.confirm("Restore this backup into an empty chit database? Existing chit records will not be overwritten."))return;const result=await request<{restored:boolean}>("/api/backup/json/restore",{method:"POST",body:JSON.stringify(parsed)});await refresh();setNotice(result.restored?"Backup restored.":"Restore not completed.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  const filteredMembers=useMemo(()=>members.filter(m=>(!groupFilter||m.group_id===groupFilter)&&[m.name,m.member_code,m.mobile].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[members,groupFilter,search]);
  const filteredPayments=useMemo(()=>payments.filter(p=>(!groupFilter||members.find(m=>m.id===p.member_id)?.group_id===groupFilter)&&[p.payment_ref,p.recorded_by,members.find(m=>m.id===p.member_id)?.name||""].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[payments,members,groupFilter,search]);

@@ -172,7 +172,10 @@ def summary(start:date|None=None,end:date|None=None,db:Session=Depends(get_db),u
     if start: stmt=stmt.where(models.ChitPayment.paid_at>=datetime.combine(start,time.min).replace(tzinfo=timezone.utc))
     if end: stmt=stmt.where(models.ChitPayment.paid_at<datetime.combine(end+timedelta(days=1),time.min).replace(tzinfo=timezone.utc))
     total,count=db.execute(stmt).one()
-    groups=db.execute(select(models.ChitGroup.name,func.coalesce(func.sum(models.ChitPayment.amount),0)).join(models.ChitMember,models.ChitMember.group_id==models.ChitGroup.id).join(models.ChitPayment,models.ChitPayment.member_id==models.ChitMember.id).group_by(models.ChitGroup.id,models.ChitGroup.name)).all()
+    group_stmt=select(models.ChitGroup.name,func.coalesce(func.sum(models.ChitPayment.amount),0)).join(models.ChitMember,models.ChitMember.group_id==models.ChitGroup.id).join(models.ChitPayment,models.ChitPayment.member_id==models.ChitMember.id).group_by(models.ChitGroup.id,models.ChitGroup.name)
+    if start: group_stmt=group_stmt.where(models.ChitPayment.paid_at>=datetime.combine(start,time.min).replace(tzinfo=timezone.utc))
+    if end: group_stmt=group_stmt.where(models.ChitPayment.paid_at<datetime.combine(end+timedelta(days=1),time.min).replace(tzinfo=timezone.utc))
+    groups=db.execute(group_stmt).all()
     return {"total_collection":str(total),"payment_count":count,"group_totals":[{"group_name":n,"collection":str(v)} for n,v in groups]}
 
 @app.get("/api/chit/reports/periods")
@@ -222,19 +225,85 @@ def restore_json(payload:schemas.BackupImport,db:Session=Depends(get_db),user=De
 
 @app.get("/api/backup/excel")
 def export_excel(db:Session=Depends(get_db),user=Depends(require_roles("owner","admin"))):
-    payload=backup_payload(db); wb=Workbook(); ws=wb.active; ws.title="Summary"
-    ws.append(["SUJAAI Chit Management Backup"]); ws.append(["Exported at",payload["exported_at"]]); ws.append(["Groups",len(payload["groups"])]); ws.append(["Members",len(payload["members"])]); ws.append(["Payments",len(payload["payments"])])
-    for title,fields in [("Groups",["id","group_code","name","chit_type","default_amount","start_date","status"]),("Members",["id","member_code","group_id","name","mobile","address","joining_date","status"]),("Payments",["id","payment_ref","member_id","amount","paid_at","frequency","recorded_by"])]:
-        sheet=wb.create_sheet(title); rows=payload[title.lower()]; sheet.append(fields)
-        for row in rows: sheet.append([row.get(f) for f in fields])
-        sheet.freeze_panes="A2"; sheet.auto_filter.ref=sheet.dimensions
+    groups=db.scalars(select(models.ChitGroup).order_by(models.ChitGroup.id)).all()
+    members=db.scalars(select(models.ChitMember).order_by(models.ChitMember.id)).all()
+    payments=db.scalars(select(models.ChitPayment).order_by(models.ChitPayment.paid_at)).all()
+    group_by_id={g.id:g for g in groups}
+    member_by_id={m.id:m for m in members}
+    wb=Workbook()
+    summary_sheet=wb.active
+    summary_sheet.title="Summary"
+    total=sum((p.amount for p in payments),Decimal("0.00"))
+    summary_sheet.append(["SUJAAI CHIT MANAGEMENT REPORT"])
+    summary_sheet.append(["Exported at",datetime.now(timezone.utc).isoformat()])
+    summary_sheet.append(["Total collection",float(total)])
+    summary_sheet.append(["Payment entries",len(payments)])
+    summary_sheet.append(["Groups",len(groups)])
+    summary_sheet.append(["Members",len(members)])
+    summary_sheet.append(["Active members",sum(1 for m in members if m.status=="active")])
+
+    def add_sheet(title,headers,rows):
+        sheet=wb.create_sheet(title)
+        sheet.append(headers)
+        for row in rows: sheet.append(row)
+        sheet.freeze_panes="A2"
+        if sheet.max_row>1: sheet.auto_filter.ref=sheet.dimensions
         for cell in sheet[1]:
-            cell.font=Font(bold=True,color="FFFFFF"); cell.fill=PatternFill("solid",fgColor="176B4A")
+            cell.font=Font(bold=True,color="FFFFFF")
+            cell.fill=PatternFill("solid",fgColor="176B4A")
+            cell.alignment=Alignment(vertical="center")
         for col in sheet.columns:
             letter=col[0].column_letter
-            sheet.column_dimensions[letter].width=min(34,max(12,max(len(str(c.value or "")) for c in col)+2))
-    for cell in ws[1]: cell.font=Font(bold=True,size=14)
-    stream=BytesIO(); wb.save(stream); stream.seek(0)
+            sheet.column_dimensions[letter].width=min(38,max(12,max(len(str(c.value or "")) for c in col)+2))
+        return sheet
+
+    add_sheet("Groups",["ID","Group ID","Group Name","Frequency","Contribution","Start Date","Status"],[
+        [g.id,g.group_code,g.name,g.chit_type,float(g.default_amount),g.start_date.isoformat(),g.status] for g in groups
+    ])
+    add_sheet("Members",["ID","Member ID","Group ID","Name","Mobile","Address","Joining Date","Status","Notes"],[
+        [m.id,m.member_code,group_by_id[m.group_id].group_code if m.group_id in group_by_id else "",m.name,m.mobile,m.address,m.joining_date.isoformat(),m.status,m.notes or ""] for m in members
+    ])
+    add_sheet("Payments",["ID","Payment Ref","Member ID","Member Name","Group","Amount","Paid At","Frequency","Recorded By","Notes"],[
+        [p.id,p.payment_ref,p.member_id,member_by_id[p.member_id].name if p.member_id in member_by_id else "",group_by_id[member_by_id[p.member_id].group_id].name if p.member_id in member_by_id and member_by_id[p.member_id].group_id in group_by_id else "",float(p.amount),p.paid_at.isoformat(),p.frequency,p.recorded_by,p.notes or ""] for p in payments
+    ])
+    member_totals={}
+    group_totals={}
+    daily={}
+    weekly={}
+    monthly={}
+    for p in payments:
+        member=member_by_id.get(p.member_id)
+        if not member: continue
+        group=group_by_id.get(member.group_id)
+        key=(member.id,member.member_code,member.name,group.name if group else "")
+        old=member_totals.get(key,[Decimal("0.00"),0])
+        member_totals[key]=[old[0]+p.amount,old[1]+1]
+        gkey=(group.id,group.group_code,group.name) if group else (0,"","Unknown")
+        gold=group_totals.get(gkey,[Decimal("0.00"),0])
+        group_totals[gkey]=[gold[0]+p.amount,gold[1]+1]
+        day=p.paid_at.date()
+        iso=day.isocalendar()
+        dkey=day.isoformat()
+        wkey=f"{iso.year}-W{iso.week:02d}"
+        mkey=day.strftime("%Y-%m")
+        for bucket,bkey in ((daily,dkey),(weekly,wkey),(monthly,mkey)):
+            bucket[bkey]=bucket.get(bkey,Decimal("0.00"))+p.amount
+    add_sheet("Group Totals",["Group ID","Group Code","Group Name","Payment Count","Total Collection"],[
+        [k[0],k[1],k[2],v[1],float(v[0])] for k,v in sorted(group_totals.items(),key=lambda x:x[0][0])
+    ])
+    add_sheet("Member Totals",["Member ID","Member Code","Member Name","Group","Payment Count","Total Paid"],[
+        [k[0],k[1],k[2],k[3],v[1],float(v[0])] for k,v in sorted(member_totals.items(),key=lambda x:x[0][0])
+    ])
+    for title,bucket in (("Daily",daily),("Weekly",weekly),("Monthly",monthly)):
+        add_sheet(title,["Period","Payment Collection"],[[k,float(v)] for k,v in sorted(bucket.items())])
+    for cell in summary_sheet[1]:
+        cell.font=Font(bold=True,color="FFFFFF",size=14)
+        cell.fill=PatternFill("solid",fgColor="176B4A")
+    summary_sheet.column_dimensions["A"].width=24
+    summary_sheet.column_dimensions["B"].width=36
+    stream=BytesIO()
+    wb.save(stream)
+    stream.seek(0)
     return StreamingResponse(stream,media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",headers={"Content-Disposition":"attachment; filename=sujaai-chit-backup.xlsx"})
 
 @app.get("/api/audit")
