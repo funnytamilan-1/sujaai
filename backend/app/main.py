@@ -288,6 +288,17 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), user
 def list_campaigns(db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
     return list(db.scalars(select(Campaign).where(Campaign.user_id == user.id).order_by(Campaign.created_at.desc()).limit(100)))
 
+@app.delete(f"{settings.api_prefix}/campaigns/{'{'}campaign_id{'}'}")
+def delete_campaign(campaign_id: int, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
+    campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id, Campaign.user_id == user.id))
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+    if campaign.status in {"queued", "sending"}:
+        raise HTTPException(409, "A queued or sending campaign cannot be deleted")
+    db.delete(campaign)
+    db.commit()
+    return {"deleted": True, "campaign_id": campaign_id}
+
 async def run_campaign(campaign_id: int, user_id: int):
     db = SessionLocal()
     try:
