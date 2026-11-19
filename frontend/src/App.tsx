@@ -50,7 +50,8 @@ export default function App(){
 
  const loadPeriod=useCallback(async()=>{
   const qs=new URLSearchParams({period});if(reportStart)qs.set("start",reportStart);if(reportEnd)qs.set("end",reportEnd);
-  const dates=new URLSearchParams();if(reportStart)dates.set("start",reportStart);if(reportEnd)dates.set("end",reportEnd);\n  const [rows,sums]=await Promise.all([request<PeriodRow[]>(`/api/chit/reports/periods?${qs.toString()}`),request<Summary>(`/api/chit/reports/summary?${dates.toString()}`)]);setPeriodRows(rows);setReportSummary(sums);
+  const dates=new URLSearchParams();if(reportStart)dates.set("start",reportStart);if(reportEnd)dates.set("end",reportEnd);
+  const [rows,sums]=await Promise.all([request<PeriodRow[]>(`/api/chit/reports/periods?${qs.toString()}`),request<Summary>(`/api/chit/reports/summary?${dates.toString()}`)]);setPeriodRows(rows);setReportSummary(sums);
  },[request,period,reportStart,reportEnd]);
 
  useEffect(()=>{if(token){refresh().catch(e=>setNotice(e.message));}},[token,refresh]);
