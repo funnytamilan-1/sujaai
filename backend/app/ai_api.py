@@ -1,14 +1,15 @@
 import json, time, uuid
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from fastapi.responses import StreamingResponse
 from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.security import get_current_user
-from app.ai_models import AIDocument, AIKnowledge, AIChunk, AITrainingJob, AIModelVersion, AIConversation, AIFeedback, AIAuditLog
+from app.ai_models import AIDocument, AIKnowledge, AIChunk, AITrainingJob, AIModelVersion, AIConversation, AIChatMessage, AIFeedback, AIAuditLog
 from app.ai_service import extract_text, clean_text, chunk_text, retrieve
 
 router=APIRouter(prefix="/api/ai",tags=["SUJA Insurance AI"])
@@ -30,6 +31,8 @@ class KnowledgeIn(BaseModel):
     source:str="Admin entry"
 class ChatIn(BaseModel):
     question:str=Field(min_length=2,max_length=4000)
+    conversation_id:int|None=None
+    model:str="auto"
 class FeedbackIn(BaseModel):
     conversation_id:int
     rating:int=Field(ge=1,le=5)
@@ -138,28 +141,111 @@ def cancel(job_id:int,db:Session=Depends(get_db),user:User=Depends(admin)):
 def models(db:Session=Depends(get_db),user:User=Depends(admin)):
     return [dict(id=x.id,version=x.version,model_type=x.model_type,status=x.status,metrics=json.loads(x.metrics_json or "{}"),created_at=x.created_at.isoformat()) for x in db.scalars(select(AIModelVersion).where(AIModelVersion.user_id==user.id).order_by(AIModelVersion.id.desc()))]
 
+def build_answer(db:Session,user:User,question:str,documents_only:bool=False):
+    chunks=list(db.scalars(select(AIChunk).where(AIChunk.user_id==user.id).limit(5000)));approved=[]
+    for item in chunks:
+        if item.knowledge_id:
+            k=db.get(AIKnowledge,item.knowledge_id)
+            if not k or k.approval_status!="approved": continue
+        if item.document_id:
+            d=db.get(AIDocument,item.document_id)
+            if not d or d.status!="approved": continue
+        if documents_only and not item.document_id: continue
+        approved.append({"id":item.id,"text":item.text,"embedding_json":item.embedding_json,"source":"Knowledge #"+str(item.knowledge_id) if item.knowledge_id else "Document #"+str(item.document_id)})
+    hits=retrieve(question,approved)
+    if hits:
+        answer="Based only on approved SUJA insurance information:\n\n"+"\n\n".join(h["text"][:1200] for h in hits[:3])+"\n\nThis is general information, not a claim or eligibility decision. Verify important decisions with an authorized insurance professional."
+    else:
+        answer="I could not find this information in the administrator-approved SUJA knowledge base. Please add and approve a reliable source, or contact an authorized insurance professional. I cannot determine eligibility or guarantee claim approval."
+    return answer,[{"source":h["source"],"chunk_id":h["id"],"score":h["score"]} for h in hits]
+
+def owned_conversation(db,user,conversation_id):
+    conv=db.scalar(select(AIConversation).where(AIConversation.id==conversation_id,AIConversation.user_id==user.id))
+    if not conv: raise HTTPException(404,"Conversation not found")
+    return conv
+
+@router.get("/conversations")
+def list_conversations(q:str="",archived:bool=False,limit:int=100,db:Session=Depends(get_db),user:User=Depends(admin)):
+    rows=list(db.scalars(select(AIConversation).where(AIConversation.user_id==user.id,AIConversation.archived==archived).order_by(AIConversation.pinned.desc(),AIConversation.updated_at.desc()).limit(max(1,min(limit,200)))))
+    if q.strip(): rows=[x for x in rows if q.strip().lower() in (x.title or "").lower() or q.strip().lower() in (x.question or "").lower()]
+    return [dict(id=x.id,title=x.title,pinned=x.pinned,archived=x.archived,updated_at=x.updated_at.isoformat()) for x in rows]
+
+@router.post("/conversations")
+def create_conversation(db:Session=Depends(get_db),user:User=Depends(admin)):
+    conv=AIConversation(user_id=user.id,title="New chat",question="",answer="",sources_json="[]")
+    db.add(conv);db.commit();db.refresh(conv)
+    return {"id":conv.id,"title":conv.title,"pinned":False,"archived":False}
+
+@router.get("/conversations/{conversation_id}")
+def get_conversation(conversation_id:int,db:Session=Depends(get_db),user:User=Depends(admin)):
+    conv=owned_conversation(db,user,conversation_id)
+    rows=list(db.scalars(select(AIChatMessage).where(AIChatMessage.conversation_id==conv.id,AIChatMessage.user_id==user.id).order_by(AIChatMessage.id.asc()).limit(500)))
+    if not rows and conv.question:
+        return {"id":conv.id,"title":conv.title,"pinned":conv.pinned,"archived":conv.archived,"messages":[{"id":conv.id*2,"role":"user","content":conv.question,"sources":[]},{"id":conv.id*2+1,"role":"assistant","content":conv.answer,"sources":json.loads(conv.sources_json or "[]")}]}
+    return {"id":conv.id,"title":conv.title,"pinned":conv.pinned,"archived":conv.archived,"messages":[dict(id=m.id,role=m.role,content=m.content,sources=json.loads(m.sources_json or "[]")) for m in rows]}
+
+@router.patch("/conversations/{conversation_id}")
+def update_conversation(conversation_id:int,payload:dict,db:Session=Depends(get_db),user:User=Depends(admin)):
+    conv=owned_conversation(db,user,conversation_id)
+    if "title" in payload: conv.title=str(payload["title"]).strip()[:240] or "New chat"
+    if "pinned" in payload: conv.pinned=bool(payload["pinned"])
+    if "archived" in payload: conv.archived=bool(payload["archived"])
+    db.commit()
+    return {"updated":True}
+
+@router.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id:int,db:Session=Depends(get_db),user:User=Depends(admin)):
+    conv=owned_conversation(db,user,conversation_id)
+    db.query(AIChatMessage).filter(AIChatMessage.conversation_id==conv.id,AIChatMessage.user_id==user.id).delete()
+    db.delete(conv);db.commit()
+    return {"deleted":True}
+
 @router.post("/chat")
 def chat(payload:ChatIn,db:Session=Depends(get_db),user:User=Depends(admin)):
     started=time.perf_counter()
-    chunks=list(db.scalars(select(AIChunk).where(AIChunk.user_id==user.id).limit(5000)));approved=[]
-    for c in chunks:
-        if c.knowledge_id:
-            k=db.get(AIKnowledge,c.knowledge_id)
-            if not k or k.approval_status!="approved": continue
-        if c.document_id:
-            d=db.get(AIDocument,c.document_id)
-            if not d or d.status!="approved": continue
-        approved.append({"id":c.id,"text":c.text,"embedding_json":c.embedding_json,"source":"Knowledge #"+str(c.knowledge_id) if c.knowledge_id else "Document #"+str(c.document_id)})
-    hits=retrieve(payload.question,approved)
-    if hits:
-        answer="Based only on approved SUJA knowledge:\n\n"+"\n\n".join(h["text"][:1200] for h in hits[:3])+"\n\nFor important decisions, verify details with an authorized insurance professional."
-    else:
-        answer="I could not find this information in the administrator-approved SUJA knowledge base. Please add and approve a reliable source, or contact an authorized insurance professional. I cannot determine eligibility or guarantee claim approval."
-    latency=(time.perf_counter()-started)*1000
-    sources=[{"source":h["source"],"chunk_id":h["id"],"score":h["score"]} for h in hits]
-    conv=AIConversation(user_id=user.id,question=payload.question,answer=answer,sources_json=json.dumps(sources),latency_ms=latency)
-    db.add(conv);db.commit();db.refresh(conv)
+    conv=owned_conversation(db,user,payload.conversation_id) if payload.conversation_id else AIConversation(user_id=user.id,title=payload.question[:60],question="",answer="",sources_json="[]")
+    if not payload.conversation_id: db.add(conv);db.flush()
+    answer,sources=build_answer(db,user,payload.question,payload.model=="documents")
+    db.add(AIChatMessage(conversation_id=conv.id,user_id=user.id,role="user",content=payload.question))
+    db.add(AIChatMessage(conversation_id=conv.id,user_id=user.id,role="assistant",content=answer,sources_json=json.dumps(sources)))
+    if not conv.question: conv.question=payload.question
+    conv.answer=answer;conv.sources_json=json.dumps(sources)
+    if conv.title=="New chat": conv.title=payload.question[:60]
+    conv.updated_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    latency=(time.perf_counter()-started)*1000;conv.latency_ms=latency
+    db.commit();db.refresh(conv)
     return {"conversation_id":conv.id,"answer":answer,"sources":sources,"latency_ms":round(latency,2),"mode":"retrieval-grounded"}
+
+@router.post("/chat/stream")
+def chat_stream(payload:ChatIn,request:Request,db:Session=Depends(get_db),user:User=Depends(admin)):
+    result=chat(payload,db,user)
+    def events():
+        yield "event: meta\ndata: "+json.dumps({"conversation_id":result["conversation_id"],"sources":result["sources"],"mode":result["mode"]})+"\n\n"
+        for offset in range(0,len(result["answer"]),48):
+            yield "event: token\ndata: "+json.dumps({"text":result["answer"][offset:offset+48]},ensure_ascii=False)+"\n\n"
+        yield "event: done\ndata: {}\n\n"
+    return StreamingResponse(events(),media_type="text/event-stream",headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+
+@router.post("/chat/regenerate")
+def regenerate(payload:dict,db:Session=Depends(get_db),user:User=Depends(admin)):
+    conv=owned_conversation(db,user,int(payload.get("conversation_id",0)))
+    last=db.scalar(select(AIChatMessage).where(AIChatMessage.conversation_id==conv.id,AIChatMessage.role=="user").order_by(AIChatMessage.id.desc()))
+    if not last: raise HTTPException(400,"No user message to regenerate")
+    answer,sources=build_answer(db,user,last.content)
+    db.add(AIChatMessage(conversation_id=conv.id,user_id=user.id,role="assistant",content=answer,sources_json=json.dumps(sources)))
+    conv.answer=answer;conv.sources_json=json.dumps(sources);db.commit()
+    return {"conversation_id":conv.id,"answer":answer,"sources":sources}
+
+@router.get("/models")
+def chat_models(db:Session=Depends(get_db),user:User=Depends(admin)):
+    active=db.scalar(select(AIModelVersion).where(AIModelVersion.user_id==user.id,AIModelVersion.status=="active").order_by(AIModelVersion.id.desc()))
+    version=active.version if active else "lexical-fallback"
+    return [
+        {"id":"auto","name":"SUJA AI Auto","description":"Approved insurance knowledge retrieval.","available":True,"version":version},
+        {"id":"knowledge","name":"SUJA Insurance Knowledge AI","description":"Approved insurance FAQs and knowledge entries.","available":True,"version":version},
+        {"id":"documents","name":"SUJA Document Assistant","description":"Approved uploaded documents only.","available":True,"version":version},
+        {"id":"neural","name":"SUJA Neural Model","description":"Experimental classifier; no conversational checkpoint is deployed.","available":False,"version":"not-deployed"}
+    ]
 
 @router.post("/feedback")
 def feedback(payload:FeedbackIn,db:Session=Depends(get_db),user:User=Depends(admin)):
