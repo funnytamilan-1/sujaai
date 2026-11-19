@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import type {FormEvent} from "react";
 import {BrainCircuit,BookOpen,FileUp,MessageSquare,Play,CheckCircle2,Clock3} from "lucide-react";
 type Req=<T>(path:string,options?:RequestInit)=>Promise<T>;
 type Knowledge={id:number;title:string;category:string;question:string;answer:string;source:string;approval_status:string;version:number};
@@ -9,7 +10,7 @@ export default function AIControlCenter({request}:{request:Req}){
  const [title,setTitle]=useState(""),[category,setCategory]=useState("Life Insurance"),[question,setQuestion]=useState(""),[answer,setAnswer]=useState(""),[source,setSource]=useState("Admin entry"),[file,setFile]=useState<File|null>(null),[chatQ,setChatQ]=useState(""),[chatA,setChatA]=useState(""),[sources,setSources]=useState<any[]>([]),[conversation,setConversation]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  async function load(){try{const [s,k,d,j]=await Promise.all([request<Record<string,number>>("ai/overview"),request<Knowledge[]>("ai/knowledge"),request<Doc[]>("ai/documents"),request<Job[]>("ai/training/jobs")]);setStats(s);setKnowledge(k);setDocs(d);setJobs(j);}catch(e){setError(e instanceof Error?e.message:"Could not load AI workspace");}}
  useEffect(()=>{void load();},[]);
- async function addKnowledge(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await request("ai/knowledge",{method:"POST",body:JSON.stringify({title,category,question,answer,source})});setNotice("Knowledge saved as pending approval.");setTitle("");setQuestion("");setAnswer("");await load();}catch(e){setError(e instanceof Error?e.message:"Save failed");}finally{setBusy(false);}}
+ async function addKnowledge(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{await request("ai/knowledge",{method:"POST",body:JSON.stringify({title,category,question,answer,source})});setNotice("Knowledge saved as pending approval.");setTitle("");setQuestion("");setAnswer("");await load();}catch(e){setError(e instanceof Error?e.message:"Save failed");}finally{setBusy(false);}}
  async function upload(){if(!file)return;const body=new FormData();body.append("file",file);setBusy(true);setError("");try{await request("ai/documents/upload",{method:"POST",body});setNotice("Document extracted. Review and approve it before indexing.");setFile(null);await load();}catch(e){setError(e instanceof Error?e.message:"Upload failed");}finally{setBusy(false);}}
  async function approve(path:string){try{await request(path,{method:"POST"});setNotice("Approved successfully.");await load();}catch(e){setError(e instanceof Error?e.message:"Approval failed");}}
  async function startIndex(){setBusy(true);try{const r=await request<{job_id:number;message:string}>("ai/training/start",{method:"POST"});setNotice(r.message);await load();}catch(e){setError(e instanceof Error?e.message:"Could not queue indexing");}finally{setBusy(false);}}
