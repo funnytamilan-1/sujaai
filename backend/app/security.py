@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from .database import get_db
+from . import models
 
 load_dotenv()
 ALGORITHM = "HS256"
@@ -43,12 +47,20 @@ def issue_token(email: str, role: str = "owner") -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode({"sub": email, "role": role, "iat": now, "exp": now + timedelta(hours=8)}, SECRET_KEY, algorithm=ALGORITHM)
 
-def current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
+def current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         email, role = payload.get("sub"), payload.get("role")
         if not email or role not in {"owner", "admin", "staff"}:
             raise ValueError("Invalid claims")
+        if role == "owner":
+            configured = os.getenv("ADMIN_EMAIL", "").lower()
+            if not configured or email.lower() != configured:
+                raise ValueError("Unknown owner")
+        else:
+            account = db.scalar(select(models.AppUser).where(models.AppUser.email == email.lower()))
+            if not account or not account.is_active or account.role != role:
+                raise ValueError("Account disabled or role changed")
         return {"email": email, "role": role}
     except (JWTError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid or expired access token")
