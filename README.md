@@ -94,3 +94,27 @@ AI endpoints are under `/api/ai` and require the existing administrator JWT. Set
 
 ### Security action required before production use
 Previous repository revisions contained credential defaults in source configuration. The current configuration no longer supplies those defaults: configure DATABASE_URL, SECRET_KEY (at least 32 random characters), ADMIN_EMAIL, ADMIN_PASSWORD and WhatsApp credentials only as deployment environment variables. Rotate the previously committed database password, JWT signing key, administrator password and WhatsApp access token immediately. Removing a value from the latest file does not erase it from Git history; treat every previously committed value as compromised.
+
+
+## SUJA Insurance AI chat workspace
+
+The signed-in **Insurance AI** workspace is a full-screen conversational UI. It uses the existing administrator JWT and FastAPI/SQLAlchemy backend; this feature does not migrate the project to MongoDB.
+
+### Available now
+- Persistent, user-scoped conversations and message records in the configured SQL database.
+- New chat, recent history, search within the loaded history, rename, pin, archive/unarchive and delete.
+- Responsive collapsible sidebar, light/dark appearance toggle, font-size setting and model selector.
+- Retrieval-grounded answers from administrator-approved SUJA knowledge. The Document Assistant filters retrieval to approved documents.
+- Server-Sent Events transport for answer delivery, source metadata, copy, feedback, and regenerate.
+- PDF, DOCX, TXT, CSV, XLSX and XLSM uploads through the existing private document extraction endpoint. Uploads enter the admin document review queue; they are not automatically approved or inserted into the current chat context.
+- The neural model option is explicitly unavailable because no conversational neural checkpoint is deployed.
+
+### Important implementation boundaries
+- SSE currently streams the completed retrieval answer in chunks; retrieval/answer assembly is performed before the stream begins. It is not incremental LLM token generation.
+- Stopping a stream stops the browser from receiving/displaying further chunks; it does not cancel the already-completed retrieval request on the server.
+- The assistant is extractive and source-grounded, not a generative ChatGPT replacement. It does not use conversation history to synthesize new answers.
+- Voice input, image understanding, in-chat file-context injection, true message editing/deletion, secure share links, conversation virtualization, and full preference persistence are not implemented in this phase.
+- The database startup migration only adds new conversation metadata columns and preserves existing rows. For production, use a formal migration system and backups.
+- No MongoDB dependency was introduced because the existing project uses SQLAlchemy and changing databases would be an unnecessary data migration.
+
+Use the **Knowledge, models & training** link in the chat sidebar to return to the existing AI Control Center. Keep the AI worker running on a persistent host for semantic embedding indexing.
