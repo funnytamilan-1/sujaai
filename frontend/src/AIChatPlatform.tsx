@@ -6,7 +6,7 @@ type RequestFn=<T>(path:string,options?:RequestInit)=>Promise<T>;
 type ChatModel={id:string;name:string;description:string;available:boolean;version:string};
 type ChatItem={id:number;title:string;pinned:boolean;archived:boolean;updated_at:string};
 type Message={id:number;role:"user"|"assistant";content:string;sources:{source:string;chunk_id:number;score:number}[]};
-export default function AIChatPlatform({request}:{request:RequestFn}){
+export default function AIChatPlatform({request,onOpenControlCenter}:{request:RequestFn;onOpenControlCenter:()=>void}){
  const [chats,setChats]=useState<ChatItem[]>([]),[active,setActive]=useState<number|null>(null),[messages,setMessages]=useState<Message[]>([]);
  const [models,setModels]=useState<ChatModel[]>([]),[model,setModel]=useState("auto"),[draft,setDraft]=useState(""),[search,setSearch]=useState("");
  const [loading,setLoading]=useState(false),[streaming,setStreaming]=useState(false),[error,setError]=useState(""),[sidebar,setSidebar]=useState(true),[archived,setArchived]=useState(false),[files,setFiles]=useState<File[]>([]),[status,setStatus]=useState("");
@@ -60,7 +60,7 @@ export default function AIChatPlatform({request}:{request:RequestFn}){
     {recent.filter(c=>c.title.toLowerCase().includes(search.toLowerCase())).map(c=><ChatRow key={c.id} chat={c} active={active===c.id} open={openChat} pin={updateChat} archive={updateChat} remove={removeChat}/>)}
     {!chats.length&&<p className="chat-empty">Your conversations will appear here.</p>}
    </div>
-   <div className="chat-sidebar-bottom"><button onClick={()=>setArchived(v=>!v)}><Archive size={16}/>{archived?"Active chats":"Archived chats"}</button><button onClick={()=>setShowSettings(v=>!v)}><Settings2 size={16}/> Settings</button><div className="chat-profile"><span>S</span><div><b>Workspace admin</b><small>Administrator</small></div></div></div>
+   <div className="chat-sidebar-bottom"><button onClick={()=>setArchived(v=>!v)}><Archive size={16}/>{archived?"Active chats":"Archived chats"}</button><button onClick={onOpenControlCenter}><ShieldCheck size={16}/> Knowledge, models & training</button><button onClick={()=>setShowSettings(v=>!v)}><Settings2 size={16}/> Settings</button><div className="chat-profile"><span>S</span><div><b>Workspace admin</b><small>Administrator</small></div></div></div>
   </aside>}
   <main className="chat-main"><header className="chat-top"><button className="chat-plain" onClick={()=>setSidebar(v=>!v)}>{sidebar?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button><div className="chat-model-wrap"><select aria-label="Select AI model" value={model} onChange={e=>setModel(e.target.value)}>{models.map(m=><option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available?" · "+m.version:" · unavailable"}</option>)}</select><ChevronDown size={14}/></div><span className="chat-top-label">Insurance intelligence</span><button className="chat-plain" onClick={()=>setShowSettings(v=>!v)}><Settings2 size={17}/></button></header>
    {showSettings&&<div className="chat-settings"><label><input type="checkbox" checked={dark} onChange={e=>setDark(e.target.checked)}/> Dark mode</label><label>Font size <select value={font} onChange={e=>setFont(e.target.value)}><option value="small">Small</option><option value="normal">Normal</option><option value="large">Large</option></select></label><label>Response language <select><option>Auto detect</option><option>Tamil</option><option>English</option><option>Thunglish</option></select></label></div>}
