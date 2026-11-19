@@ -75,6 +75,13 @@ class GroupUpdate(BaseModel):
     description: str | None = None
     status: Literal["active", "paused", "completed"] | None = None
 
+    @model_validator(mode="after")
+    def reject_null_required_fields(self):
+        for key in ("name", "chit_type", "default_amount", "start_date", "status"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key} cannot be null")
+        return self
+
 class MemberUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=160)
     mobile: Mobile | None = None
@@ -83,10 +90,26 @@ class MemberUpdate(BaseModel):
     notes: str | None = None
     status: Literal["active", "inactive"] | None = None
 
+    @model_validator(mode="after")
+    def reject_null_required_fields(self):
+        for key in ("name", "mobile", "address", "joining_date", "status"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key} cannot be null")
+        return self
+
 class PaymentUpdate(BaseModel):
     amount: Money | None = None
     paid_at: datetime | None = None
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def validate_patch(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one field is required")
+        for key in ("amount", "paid_at"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key} cannot be null")
+        return self
 
 class UserCreate(BaseModel):
     email: str = Field(min_length=5, max_length=190)
@@ -107,6 +130,6 @@ class UserStatusUpdate(BaseModel):
 class BackupImport(BaseModel):
     schema_version: int = Field(ge=1, le=1)
     exported_at: datetime | None = None
-    groups: list[dict] = []
-    members: list[dict] = []
-    payments: list[dict] = []
+    groups: list[dict] = Field(default_factory=list)
+    members: list[dict] = Field(default_factory=list)
+    payments: list[dict] = Field(default_factory=list)
