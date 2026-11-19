@@ -11,13 +11,15 @@ from sqlalchemy import select
 from openpyxl import load_workbook
 from app.config import settings
 from app.database import Base, engine, get_db, SessionLocal
-from app.models import User, Contact, Campaign, MessageLog
+from app.models import User, Contact, Campaign, MessageLog, WorkspaceRecord
+from app.workspace_api import router as workspace_router
 from app.schemas import RegisterIn, LoginIn, TokenOut, UserOut, ContactOut, CampaignCreate, CampaignOut
 from app.security import hash_password, verify_password, create_access_token, get_current_user
 from app.whatsapp import send_image_template
 
 Base.metadata.create_all(bind=engine)
-app = FastAPI(title=settings.app_name, version="1.0.0")
+app = FastAPI(title=settings.app_name, version="1.1.0")
+app.include_router(workspace_router)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=str(settings.upload_path)), name="uploads")
 
