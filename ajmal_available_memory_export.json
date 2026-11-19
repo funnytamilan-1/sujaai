@@ -1,0 +1,338 @@
+{
+  "export_info": {
+    "title": "Available ChatGPT Memory Export",
+    "generated_on": "2026-11-20",
+    "language": "English with Thunglish context",
+    "scope": "This export contains the user-specific memories and recent conversation context currently available in this chat. It may not include every past message or every item in ChatGPT's account-level Memory summary."
+  },
+  "profile": {
+    "preferred_name": "Ajmal",
+    "display_names": [
+      "md ajmal",
+      "ᴍᴅ ᴀᴊᴍᴀʟ"
+    ],
+    "age_context": "User has stated age 15; an earlier profile field was recorded as '1X'.",
+    "country": "India",
+    "location_context": "Kovai / Coimbatore area, Tamil Nadu",
+    "gender_context": "Male",
+    "occupation_or_role": [
+      "Developer",
+      "Developer 3️⃣"
+    ],
+    "self_description": [
+      "developer",
+      "tech enthusiast",
+      "creator"
+    ],
+    "technology_interest": "Strong interest in technology and software development",
+    "telegram_username": "@funnytamilan2",
+    "email_context": "ajmalitsme@gmail.com was previously mentioned in Google account/admin setup context. Treat as private."
+  },
+  "learning_and_education": {
+    "education_context": [
+      "User said they stopped school partway through 10th grade.",
+      "A quarterly exam was mentioned as the written exam completed.",
+      "User said they do not currently have a Transfer Certificate (TC).",
+      "User has an Aadhaar card.",
+      "User has not studied through NIOS yet but is interested in the NIOS 10th home-study/exam route.",
+      "User describes their learning as self-learning and says they do not currently have certificates.",
+      "User is motivated by entering the developer field."
+    ],
+    "learning_preferences": [
+      "Prefers beginner-friendly, detailed, sequential explanations.",
+      "Often prefers Thunglish (Tamil-English mix).",
+      "For cybersecurity learning, requested a beginner path on Windows, including safe labs, exercises and answer keys, Windows-suitable commands, and Linux/PowerShell fundamentals through advanced topics."
+    ],
+    "topics_requested": [
+      "Python and OOP",
+      "FastAPI",
+      "Java and AI/ML",
+      "DBMS and RDBMS",
+      "GitHub, Microsoft and Azure certificates",
+      "Trigonometry",
+      "Linux",
+      "Cybersecurity and ethical hacking",
+      "SEO",
+      "LangChain and RAG",
+      "AI agents and Jarvis-style assistants"
+    ],
+    "course_pricing_ideas": [
+      "HTML-CSS-JS + Java: 500p +",
+      "Cybersecurity: 500p +",
+      "Mobile service: 399p",
+      "AI/ML: 299",
+      "Basics + Linux + DSA + cybersecurity: 500p +"
+    ]
+  },
+  "development_preferences": {
+    "github_account_or_org": "funnyTamilan-1",
+    "workflow_preferences": [
+      "Prefer main branch as the primary branch and merge other branches into main.",
+      "Audit the full repository before making changes.",
+      "Avoid duplicate configuration files.",
+      "Preserve config.py/config.ts secrets and variables unless a change is necessary.",
+      "Explain new environment variable names instead of replacing existing config blindly.",
+      "Do not claim deployments, tests, or repository changes unless they were actually verified."
+    ],
+    "ui_preferences": [
+      "Premium, polished UI with smooth interactions.",
+      "Bold, stylish serif or distinctive fonts where appropriate.",
+      "Google-level polish and usability.",
+      "Often likes green, white, blue and red combinations for some projects.",
+      "Has also expressed a preference for violet combined with green.",
+      "Values simple, recognizable branding and mobile-friendly interfaces."
+    ],
+    "credits_and_branding": {
+      "developer_credit": "Code Dots",
+      "community": "@JDot_community",
+      "support_handle": "@Code_dots"
+    }
+  },
+  "projects": {
+    "anime_dot_bot": {
+      "repository_or_project": "Anime_Dot_bot",
+      "deployment_url": "https://anime-dot-bot.onrender.com",
+      "telegram_bot": "@Anime_Dot_bot",
+      "port": 10000,
+      "configuration_context": {
+        "admins": 1,
+        "storages": 3,
+        "force_sub_channels": 4,
+        "primary_storage": "configured"
+      }
+    },
+    "file_store_bot": {
+      "repository": "funnyTamilan-1/File-store-bot",
+      "brand": "Anime Dot",
+      "features_requested": [
+        "Four-channel force subscription",
+        "A-Z index",
+        "Mini-app streaming UI",
+        "Subtitle and language selection",
+        "Batch links",
+        "Auto-rename",
+        "Thumbnails and captions",
+        "Admin panel"
+      ],
+      "developer_credit": "@Code_Dots",
+      "community": "@JDot_community"
+    },
+    "telegram_file_elite_bot": {
+      "repository": "funnyTamilan-1/Telegram-file-elite-bot",
+      "deployment_context": "Render deployment URL suffix: telegram-file-elite-bot-2m3r",
+      "runtime": [
+        "Node 24.21.0",
+        "Bun 1.4.3"
+      ],
+      "build_command": "npm install --include=dev && npm run typecheck && npm run build",
+      "known_context": [
+        "Earlier server.ts errors were reported around lines 2153-2506.",
+        "npm audit reported 13 vulnerabilities.",
+        "User wanted MongoDB or an owned DB folder, plus Railway and Telegram-channel JSON backup.",
+        "Admin stats previously shown: Total users 7, Active 7, Banned 0.",
+        "User said Render is the only available hosting."
+      ]
+    },
+    "dot_manager": {
+      "repository": "funnyTamilan-1/Dot-manager",
+      "deployment_url": "https://dot-manager.onrender.com",
+      "port": 10000
+    },
+    "justdot": {
+      "frontend": "https://justdot.vercel.app",
+      "backend": "https://justdot-backend.vercel.app",
+      "tagline": "ONE NETWORK. INFINITE DISCOVERIES."
+    },
+    "leech_dot": {
+      "environment": "Ubuntu 24.04.5 VPS",
+      "path": "/root/Leech-Dot-bot",
+      "service": "leechdot.service",
+      "panel_port": 8080
+    },
+    "file_rename_bot": {
+      "description": "Advanced no-download file rename bot",
+      "stack": [
+        "FastAPI",
+        "Render"
+      ],
+      "limits_idea": {
+        "free": "5.00GB",
+        "premium_target": "4GB per file + daily 20GB"
+      },
+      "admin_path": "/admin",
+      "credits": [
+        "@funnytamilan",
+        "@Code_Dots"
+      ]
+    },
+    "musixdot_api": {
+      "repository": "funnyTamilan-1/Musixdot",
+      "frontend": "https://musixdot.vercel.app",
+      "backend": "https://apimusixdot.vercel.app",
+      "health_endpoint": "https://apimusixdot.vercel.app/health",
+      "branding": [
+        "MusixDot API",
+        "Made by Code Dots",
+        "support @Code_dots"
+      ],
+      "database_history": [
+        "Neon",
+        "Render Postgres",
+        "Supabase",
+        "MongoDB"
+      ],
+      "known_issue": "SQLAlchemy/psycopg password authentication failure was reported.",
+      "environment_variable_context": "VITE_API_BASE_URL points to the backend.",
+      "known_issues": [
+        "Login/signup failing",
+        "OTP setup",
+        "Google invalid_client or origin errors",
+        "Invalid or expired session",
+        "Admin data unavailable"
+      ],
+      "pricing_ideas": {
+        "free": "/play 100 per day; /vplay 25 per day",
+        "premium": "₹100/month; 500+80",
+        "advanced": "₹200/month; 700+200"
+      },
+      "admin_context": {
+        "admin_email": "ajmalitsme@gmail.com",
+        "moderators": "Read-only moderators requested",
+        "other_requested_features": [
+          "Admin controls",
+          "Aura AI studio"
+        ],
+        "ui_colors": [
+          "green",
+          "yellow"
+        ]
+      }
+    },
+    "musixdot_bot": {
+      "repository": "funnyTamilan-1/Musixdot-bot",
+      "hosting": "Render",
+      "runtime_context": [
+        "Python 3.14.8",
+        "Poetry 2.1.3"
+      ],
+      "port": 10000,
+      "technology": [
+        "Pyrogram",
+        "py-tgcalls 3.0.0"
+      ],
+      "goal": [
+        "/play and /vplay voice-chat playback through MusixDot API",
+        "Authorized provider",
+        "Song-name search",
+        "Avoid YouTube/Spotify ripping"
+      ],
+      "known_errors": [
+        "STREAM_ALLOWED_HOSTS",
+        "provider_not_configured",
+        "voice chat already active"
+      ]
+    },
+    "linkyfiy": {
+      "project": "Linkyfiy URL shortener",
+      "deployment": "https://linkyfiy.vercel.app",
+      "repository_context": "linkyfiy",
+      "important_constraint": "User requested not to touch Config.py.",
+      "adsense_context_2026_11_07": {
+        "status": "Requires review",
+        "ads_txt": "Not found"
+      },
+      "features_or_changes_requested": [
+        "AdSense script integration",
+        "ads.txt troubleshooting",
+        "404 page",
+        "Intro page with signup/login",
+        "Terms, policies and docs",
+        "Acceptance checkbox and captcha",
+        "Account name, email and password changes",
+        "Customizable shortener UI"
+      ],
+      "configuration_terms_asked_about": [
+        "ad_provider_api_key",
+        "script_url",
+        "policy_url",
+        "zone_id"
+      ]
+    },
+    "justai": {
+      "repository": "https://github.com/funnytamilan-1/Ai-chatbot",
+      "stack": [
+        "React",
+        "Vite",
+        "FastAPI",
+        "Gemini API"
+      ],
+      "project_context": [
+        "User described the foundation as a React + Vite frontend and FastAPI backend connected to Gemini API.",
+        "User later said they do not have a Gemini API key or ChatGPT API key.",
+        "Requested a ChatGPT-like, mobile-first full-stack chatbot.",
+        "Requested dark/light UI, browser-local conversation history, Markdown rendering, chat API, health endpoint, environment templates, and Render/Vercel notes.",
+        "Wanted MongoDB cloud conversation storage, signup/login, safe password hashing, token handling, environment variables, tests and documentation.",
+        "Requested continuation without overwriting working main-branch code or exposing secrets."
+      ],
+      "frontend_deployment": "https://ai-chatbot-uhgb.vercel.app/",
+      "known_issues": [
+        "Failed to fetch",
+        "Vercel 500 FUNCTION_INVOCATION_FAILED (bom1 instance shown)",
+        "Asked about generating JWT_SECRET"
+      ],
+      "latest_related_request": "Create an AI training full JSON file."
+    }
+  },
+  "branding_and_creative_preferences": {
+    "brands_or_names": [
+      "FunnyTamilan",
+      "justDot",
+      "Just Dot Code",
+      "Just Dot Network",
+      "Team Rum",
+      "Dot X Manage",
+      "CloneElite",
+      "Orezdot",
+      "Nothing Dot"
+    ],
+    "taglines_or_brand_notes": {
+      "CloneElite": "Clone • Customize • Scale",
+      "OrezDot": "User liked the name and asked about worldwide company registration.",
+      "OrezDot_visual_direction": "Green, white and black logo idea.",
+      "Nothing_Dot": "User requested a simple, recognizable YouTube channel identity and banner."
+    },
+    "visual_preferences": [
+      "Violet + green combination",
+      "Green + white + black for OrezDot",
+      "Premium and simple interfaces",
+      "Anime thumbnail template that can be edited in Canva",
+      "Neon family-image style based on user-provided photos"
+    ]
+  },
+  "recent_conversation_topics": [
+    "GitHub-related platforms and terms: Session, Rubicon, Microsoft alternatives to GitHub, LangChain, RAG",
+    "RDBMS",
+    "WhatsApp broadcast and sending messages to customers",
+    "Earth-to-Moon travel time, light speed, quantum entanglement, tachyons and time dilation",
+    "Tooth pain and basic health guidance",
+    "OrezDot search-engine UI",
+    "Outgoing-call automation APIs, voice APIs, telephony integration and providers such as TeleCMI",
+    "Linux learning and US 10th-grade curriculum",
+    "Number of countries and the United Nations",
+    "Logical ethics, decision concepts and DBMS",
+    "SEO for a website",
+    "USET and combining engineering fields",
+    "Ethical cybersecurity learning",
+    "HTML, CSS and JavaScript button click-count examples",
+    "YouTube branding and banner resizing",
+    "AI website-builder prompts and advanced full-stack AI systems",
+    "Flex meaning",
+    "GitHub repository file-count checks"
+  ],
+  "privacy_and_accuracy_notes": [
+    "Some entries are historical project states or ideas, not guaranteed to be current.",
+    "Deployment URLs and error states may have changed since they were last discussed.",
+    "Secrets, passwords, API keys, access tokens and private credentials are intentionally not included.",
+    "This is an export of the context currently available to the assistant, not a complete account data archive."
+  ]
+}
