@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
 
     # Supply these values through deployment environment variables.
-    database_url: str = "postgresql://neondb_owner:npg_WKlRV28CiQpz@ep-empty-tooth-bbwpkbh3.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-    secret_key: str = "jdkwlwlsgyew=34iofrjh88888888he2jksur0jfr9784n5hyfr46f8y665t7fyffffvnfjvhjvfkjhfhdkjs'v;[kvtkbjbjbj"
-    admin_email: str = "adminsuja@gmail.com"
-    admin_password: str = "sujaui00400450admin2027"
+    database_url: str = "sqlite:///./sujaai.db"
+    secret_key: str = ""
+    admin_email: str = ""
+    admin_password: str = ""
 
     access_token_expire_minutes: int = 720
     cors_origins: str = "https://sujaai.vercel.app"
@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     upload_dir: str = "/tmp/sujaai-uploads"
     max_upload_mb: int = 8
 
-    whatsapp_access_token: str = "EAAey8WFbadIBTM2rCLZCT9OKPjkFVjLQmRXqiflwSnZArsIfLcYTUHAXmz3PynyEcV6eL8hqwVSdJsTGyFJt0tIhXDY9Ew6Xgg1kQ0DHHeKcr46eVZBmjJqW748GzFYRXHZC3YAZAHOzHGlqeEc717qg781d6ZCq5wkLjJsSZAGQvfwBqhclS25f1sD5RK8ITi1EC4VeZCZC1LQzOKiiLC4XXNTisuUQ5PeW8jzSYZAifxfY9FiFcNBVZAHD0f0SPy9iF09dZCGvpLpCUIzBu34tvMZAFpFsUqgZDZD"
-    whatsapp_phone_number_id: str = "1472757175915058"
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
     whatsapp_graph_api_version: str = "v26.0"
     whatsapp_verify_token: str = ""
     meta_app_secret: str = ""
