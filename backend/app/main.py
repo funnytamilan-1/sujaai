@@ -20,6 +20,20 @@ from app import ai_models  # register AI tables before metadata.create_all
 from app.ai_api import router as ai_router
 
 Base.metadata.create_all(bind=engine)
+from sqlalchemy import inspect
+def ensure_ai_conversation_columns():
+    existing = {column["name"] for column in inspect(engine).get_columns("ai_conversations")}
+    statements = [
+        ("title", "ALTER TABLE ai_conversations ADD COLUMN title VARCHAR(240) NOT NULL DEFAULT 'New conversation'"),
+        ("pinned", "ALTER TABLE ai_conversations ADD COLUMN pinned BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("archived", "ALTER TABLE ai_conversations ADD COLUMN archived BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("updated_at", "ALTER TABLE ai_conversations ADD COLUMN updated_at TIMESTAMP"),
+    ]
+    with engine.begin() as connection:
+        for column, statement in statements:
+            if column not in existing:
+                connection.exec_driver_sql(statement)
+ensure_ai_conversation_columns()
 app = FastAPI(title=settings.app_name, version="1.1.0")
 app.include_router(workspace_router)
 app.include_router(ai_router)
