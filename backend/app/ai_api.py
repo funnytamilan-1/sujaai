@@ -87,7 +87,7 @@ async def upload_document(file:UploadFile=File(...),db:Session=Depends(get_db),u
     if suffix not in ALLOWED: raise HTTPException(400,"Supported: PDF, DOCX, TXT, CSV, XLSX, XLSM")
     content=await file.read()
     if not content or len(content)>settings.max_upload_mb*1024*1024: raise HTTPException(413,"File is empty or exceeds upload limit")
-    folder=settings.upload_path/"private-ai"/str(user.id);folder.mkdir(parents=True,exist_ok=True)
+    folder=settings.upload_path.parent/"sujaai-private-ai"/str(user.id);folder.mkdir(parents=True,exist_ok=True)
     path=folder/(uuid.uuid4().hex+suffix);path.write_bytes(content)
     doc=AIDocument(user_id=user.id,filename=name,stored_path=str(path),content_type=file.content_type or "application/octet-stream");db.add(doc);db.flush()
     try:
