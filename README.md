@@ -90,3 +90,7 @@ Queue indexing from Insurance AI → Training. The worker generates multilingual
 - Use official, current insurer/regulator documents and have an authorized insurance professional review entries before approval. Do not upload unnecessary customer personal data.
 
 AI endpoints are under `/api/ai` and require the existing administrator JWT. Set production database and credentials through deployment environment variables. Do not commit secrets.
+
+
+### Security action required before production use
+Previous repository revisions contained credential defaults in source configuration. The current configuration no longer supplies those defaults: configure DATABASE_URL, SECRET_KEY (at least 32 random characters), ADMIN_EMAIL, ADMIN_PASSWORD and WhatsApp credentials only as deployment environment variables. Rotate the previously committed database password, JWT signing key, administrator password and WhatsApp access token immediately. Removing a value from the latest file does not erase it from Git history; treat every previously committed value as compromised.
