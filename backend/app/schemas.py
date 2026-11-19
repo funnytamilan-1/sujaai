@@ -64,3 +64,48 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+from pydantic import model_validator
+
+class GroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    chit_type: Literal["daily", "weekly", "monthly"] | None = None
+    default_amount: Money | None = None
+    start_date: date | None = None
+    description: str | None = None
+    status: Literal["active", "paused", "completed"] | None = None
+
+class MemberUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    mobile: Mobile | None = None
+    address: str | None = Field(default=None, min_length=3)
+    joining_date: date | None = None
+    notes: str | None = None
+    status: Literal["active", "inactive"] | None = None
+
+class PaymentUpdate(BaseModel):
+    amount: Money | None = None
+    paid_at: datetime | None = None
+    notes: str | None = None
+
+class UserCreate(BaseModel):
+    email: str = Field(min_length=5, max_length=190)
+    password: str = Field(min_length=12, max_length=128)
+    role: Literal["admin", "staff"] = "staff"
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+class BackupImport(BaseModel):
+    schema_version: int = Field(ge=1, le=1)
+    exported_at: datetime | None = None
+    groups: list[dict] = []
+    members: list[dict] = []
+    payments: list[dict] = []
