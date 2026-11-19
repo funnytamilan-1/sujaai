@@ -23,7 +23,7 @@ class LoginPage extends StatefulWidget {final ValueChanged<String> onSignedIn;co
 class _LoginPageState extends State<LoginPage>{
  bool busy=false;String error='';
  Future<void> _login() async {
-  setState(()=>{busy=true,error=''});
+  setState(() { busy=true; error=''; });
   try{
    final g=GoogleSignIn(scopes:const ['email'],serverClientId:googleServerClientId.isEmpty?null:googleServerClientId);
    final account=await g.signIn();if(account==null)return;
