@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     admin_email: str = "  adminsuja@gmail.com"
     admin_password: str = "adminsuja0120270101"
 
-    access_token_expire_minutes: int = 720
+    access_token_expire_minutes: int = 10000
     cors_origins: str = "https://sujaai.vercel.app"
     # Vercel's deployed filesystem is read-only except for /tmp.
     # Use Cloudinary for durable campaign image storage.
