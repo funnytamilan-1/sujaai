@@ -11,11 +11,11 @@ class Settings(BaseSettings):
     # All deployment credentials must be supplied through environment variables.
     # No production secrets or database credentials are stored in source control.
     database_url: str = "postgresql://neondb_owner:npg_WKlRV28CiQpz@ep-empty-tooth-bbwpkbh3.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-    secret_key: str = "adsvdehgklvgjjjjjjjjjbvac7fpgp[lt';glt';lb;vkkxcjcjjcjjjjxkzjxkjcjikjcdopsjcpsa'9377722hxbbxe6bx2733r4378b9x894yr84"
-    admin_email: str = "  adminsuja@gmail.com"
+    secret_key: str = "adsvdehgkhkjlvgjjjjjjjjjbvac7fpgp[lt';glt';lb;vkkxcjcjjcjjjjxkzjxkjcjikjcdopsjcpsa'9377722hxbbxe6bx2733r4378b9x894yr84"
+    admin_email: str = "adminsuja@gmail.com"
     admin_password: str = "adminsuja0120270101"
 
-    access_token_expire_minutes: int = 10000
+    access_token_expire_minutes: int = 750
     cors_origins: str = "https://sujaai.vercel.app"
     # Vercel's deployed filesystem is read-only except for /tmp.
     # Use Cloudinary for durable campaign image storage.
