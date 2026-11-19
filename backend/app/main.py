@@ -248,6 +248,15 @@ def update_consent(contact_id: int, opted_in: bool, db: Session = Depends(get_db
     db.commit()
     return {"id": contact.id, "opted_in": contact.opted_in}
 
+@app.delete(f"{settings.api_prefix}/contacts/{'{'}contact_id{'}'}")
+def delete_contact(contact_id: int, db: Session = Depends(get_db), user: User = Depends(get_admin_user)):
+    contact = db.scalar(select(Contact).where(Contact.id == contact_id, Contact.user_id == user.id))
+    if not contact:
+        raise HTTPException(404, "Contact not found")
+    db.delete(contact)
+    db.commit()
+    return {"deleted": True, "contact_id": contact_id}
+
 @app.post(f"{settings.api_prefix}/media")
 async def upload_media(file: UploadFile = File(...), user: User = Depends(get_admin_user)):
     suffix = Path(file.filename or "").suffix.lower()
@@ -350,3 +359,14 @@ async def receive_webhook(request: Request):
     except (KeyError, IndexError, TypeError):
         pass
     return {"status": "received"}
+
+# Keep CORS outside FastAPI's ServerErrorMiddleware so unhandled 500 responses
+# still carry the allowed-origin headers needed by browser clients.
+app = CORSMiddleware(
+    app,
+    allow_origins=settings.cors_origin_list,
+    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\\.vercel\\.app$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
