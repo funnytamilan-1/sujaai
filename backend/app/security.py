@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 import os
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException
