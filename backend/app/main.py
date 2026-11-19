@@ -365,7 +365,7 @@ async def receive_webhook(request: Request):
 app = CORSMiddleware(
     app,
     allow_origins=settings.cors_origin_list,
-    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\\.vercel\\.app$",
+    allow_origin_regex=r"^https://sujaai(?:-[a-z0-9-]+)?\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
