@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from "react";
 import type {FormEvent,KeyboardEvent,DragEvent} from "react";
-import {ArrowDown,ArrowLeft,ArrowUp,Archive,AudioLines,Check,ChevronDown,Copy,FileText,Menu,MessageSquarePlus,MoreHorizontal,Paperclip,PanelLeftClose,PanelLeftOpen,Pin,Plus,RefreshCw,Search,Send,Settings2,ShieldCheck,Square,ThumbsDown,ThumbsUp,Trash2,X} from "lucide-react";
+import {ArrowUp,Archive,ChevronDown,Copy,FileText,MessageSquarePlus,MoreHorizontal,Paperclip,PanelLeftClose,PanelLeftOpen,Pin,Plus,RefreshCw,Search,Send,Settings2,ShieldCheck,Square,ThumbsDown,ThumbsUp,Trash2,X} from "lucide-react";
 
 type RequestFn=<T>(path:string,options?:RequestInit)=>Promise<T>;
 type ChatModel={id:string;name:string;description:string;available:boolean;version:string};
@@ -10,7 +10,7 @@ export default function AIChatPlatform({request}:{request:RequestFn}){
  const [chats,setChats]=useState<ChatItem[]>([]),[active,setActive]=useState<number|null>(null),[messages,setMessages]=useState<Message[]>([]);
  const [models,setModels]=useState<ChatModel[]>([]),[model,setModel]=useState("auto"),[draft,setDraft]=useState(""),[search,setSearch]=useState("");
  const [loading,setLoading]=useState(false),[streaming,setStreaming]=useState(false),[error,setError]=useState(""),[sidebar,setSidebar]=useState(true),[archived,setArchived]=useState(false),[files,setFiles]=useState<File[]>([]),[status,setStatus]=useState("");
- const [dark,setDark]=useState(false),[font,setFont]=useState("normal"),[showSettings,setShowSettings]=useState(false),[expanded,setExpanded]=useState<number[]>([]);
+ const [dark,setDark]=useState(false),[font,setFont]=useState("normal"),[showSettings,setShowSettings]=useState(false);
  const scrollRef=useRef<HTMLDivElement>(null),abortRef=useRef<AbortController|null>(null),fileRef=useRef<HTMLInputElement>(null);
  const apiBase=String(import.meta.env.VITE_API_BASE_URL||"/api").trim().replace(/\/+$/,"");
  const token=()=>localStorage.getItem("sujaai_token")||"";
