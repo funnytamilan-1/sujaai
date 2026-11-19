@@ -99,3 +99,26 @@ def restore_backup(payload: dict, db: Session = Depends(get_db), user: User = De
             title=str(item.get("title", "Restored record")).strip()[:200] or "Restored record", data_json=encoded))
     db.add_all(created); db.commit()
     return {"restored": len(created), "mode": "append"}
+
+@router.post(f"{settings.api_prefix}/workspace/media")
+async def upload_workspace_image(file: UploadFile = File(...), user: User = Depends(require_admin)):
+    raw = await file.read()
+    if not raw or len(raw) > 8 * 1024 * 1024:
+        raise HTTPException(413, "Choose an image smaller than 8 MB")
+    try:
+        image = Image.open(io.BytesIO(raw))
+        image.verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(400, "The uploaded file is not a valid image")
+    image = Image.open(io.BytesIO(raw))
+    if image.width < 1 or image.height < 1 or image.width > 10000 or image.height > 10000:
+        raise HTTPException(400, "Image dimensions are not supported")
+    ext = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}.get(image.format)
+    if not ext:
+        raise HTTPException(400, "Only JPEG, PNG and WEBP images are supported")
+    folder = settings.upload_path / "studio"
+    folder.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid4().hex}{ext}"
+    target = folder / filename
+    target.write_bytes(raw)
+    return {"url": f"/uploads/studio/{filename}", "width": image.width, "height": image.height}
