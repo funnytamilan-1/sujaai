@@ -1,6 +1,5 @@
 import json
 import io
-import os
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -9,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.config import settings
+from app.workspace_config import (GOOGLE_CLIENT_ID, WORKSPACE_UPLOAD_MAX_MB, WORKSPACE_MAX_RECORD_BYTES, WORKSPACE_MAX_BACKUP_RECORDS)
 from app.database import get_db
 from app.models import User, WorkspaceRecord
 from app.security import get_current_user, create_access_token
@@ -48,7 +48,7 @@ def create_record(payload: dict, db: Session = Depends(get_db), user: User = Dep
     if not isinstance(data, dict):
         raise HTTPException(422, "Record data must be an object")
     encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    if len(encoded.encode("utf-8")) > 100_000:
+    if len(encoded.encode("utf-8")) > WORKSPACE_MAX_RECORD_BYTES:
         raise HTTPException(413, "Record data is too large. Store images as files, not embedded base64.")
     record = WorkspaceRecord(user_id=user.id, record_type=kind,
         title=str(payload.get("title", "Untitled")).strip()[:200] or "Untitled", data_json=encoded)
@@ -91,7 +91,7 @@ def restore_backup(payload: dict, db: Session = Depends(get_db), user: User = De
     if payload.get("format") != "sujaai-workspace-backup-v1":
         raise HTTPException(400, "Unsupported backup format")
     records = payload.get("records")
-    if not isinstance(records, list) or len(records) > 5000:
+    if not isinstance(records, list) or len(records) > WORKSPACE_MAX_BACKUP_RECORDS:
         raise HTTPException(400, "Backup must contain at most 5000 records")
     created = []
     for item in records:
@@ -130,7 +130,7 @@ async def upload_workspace_image(file: UploadFile = File(...), user: User = Depe
 
 @router.post(f"{settings.api_prefix}/auth/google")
 def google_admin_login(payload: dict, db: Session = Depends(get_db)):
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_id = GOOGLE_CLIENT_ID
     credential = payload.get("credential")
     if not client_id:
         raise HTTPException(503, "Google login is not configured. Set GOOGLE_CLIENT_ID on the backend.")
