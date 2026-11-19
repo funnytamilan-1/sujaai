@@ -7,14 +7,14 @@ const root=String(import.meta.env.VITE_API_BASE_URL||"/api").replace(/\/+$/,"").
 const img=(p:string)=>p.startsWith("http")?p:root+p;
 export default function BusinessSuite({request}:{request:Req}){
  const [tab,setTab]=useState("customer"),[items,setItems]=useState<Item[]>([]),[msg,setMsg]=useState(""),[err,setErr]=useState("");
- const [form,setForm]=useState<Record<string,string>>({}),[photo,setPhoto]=useState(""),[front,setFront]=useState(""),[back,setBack]=useState(""),[file,setFile]=useState<File|null>(null);
+ const [form,setForm]=useState<Record<string,string>>({}),[photo,setPhoto]=useState(""),[file,setFile]=useState<File|null>(null);
  const [accent,setAccent]=useState("#087d59");
  async function load(){try{setItems(await request<Item[]>("workspace/records"));}catch(e){setErr(e instanceof Error?e.message:"Load failed");}}
  useEffect(()=>{void load();},[]);
  function val(k:string){return form[k]||""}
  function set(k:string,v:string){setForm(p=>({...p,[k]:v}))}
  async function save(type:string,title:string,data:any){try{await request("workspace/records",{method:"POST",body:JSON.stringify({type,title,data})});setMsg("Saved: "+title);setErr("");setForm({});await load();}catch(e){setErr(e instanceof Error?e.message:"Save failed");}}
- async function upload(f:File,which:string){const d=new FormData();d.append("file",f);try{const r=await request<{url:string}>("workspace/media",{method:"POST",body:d});if(which==="photo")setPhoto(r.url);if(which==="front")setFront(r.url);if(which==="back")setBack(r.url);setMsg("Image uploaded");}catch(e){setErr(e instanceof Error?e.message:"Upload failed");}}
+ async function upload(f:File,which:string){const d=new FormData();d.append("file",f);try{const r=await request<{url:string}>("workspace/media",{method:"POST",body:d});if(which==="photo")setPhoto(r.url);setMsg("Image uploaded");}catch(e){setErr(e instanceof Error?e.message:"Upload failed");}}
  async function backup(){try{const data=await request<any>("workspace/backup");const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=u;a.download="sujaai-backup.json";a.click();URL.revokeObjectURL(u);}catch(e){setErr(e instanceof Error?e.message:"Backup failed");}}
  async function restore(){if(!file)return;try{const data=JSON.parse(await file.text());const r=await request<{restored:number}>("workspace/restore",{method:"POST",body:JSON.stringify(data)});setMsg(String(r.restored)+" records restored");await load();}catch(e){setErr(e instanceof Error?e.message:"Restore failed");}}
  const list=items.filter(x=>x.type===tab);
