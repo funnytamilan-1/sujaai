@@ -48,7 +48,7 @@ class WorkspacePage extends StatefulWidget {final String token;final VoidCallbac
 class _WorkspacePageState extends State<WorkspacePage>{
  List<dynamic> records=[];bool busy=false;String error='';
  Future<void> _load() async {
-  setState(()=>{busy=true,error=''});
+  setState(() { busy=true; error=''; });
   try{final r=await http.get(Uri.parse('$apiBase/workspace/records'),headers:{'Authorization':'Bearer '+widget.token});
    if(r.statusCode!=200)throw Exception(jsonDecode(r.body)['detail']??'Could not load records');
    setState(()=>records=jsonDecode(r.body) as List<dynamic>);
