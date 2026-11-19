@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+const secureStorage = FlutterSecureStorage();
 const apiBase = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000/api');
 const googleServerClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
 void main() => runApp(const SujaaiApp());
@@ -14,9 +15,9 @@ class SessionGate extends StatefulWidget { const SessionGate({super.key}); @over
 class _SessionGateState extends State<SessionGate>{
  String? token;
  @override void initState(){super.initState();_restore();}
- Future<void> _restore() async {final p=await SharedPreferences.getInstance();if(mounted)setState(()=>token=p.getString('sujaai_token'));}
- Future<void> _signedIn(String v) async {final p=await SharedPreferences.getInstance();await p.setString('sujaai_token',v);if(mounted)setState(()=>token=v);}
- Future<void> _signOut() async {await GoogleSignIn().signOut();final p=await SharedPreferences.getInstance();await p.remove('sujaai_token');if(mounted)setState(()=>token=null);}
+ Future<void> _restore() async {final v=await secureStorage.read(key:'sujaai_token');if(mounted)setState(()=>token=v);}
+ Future<void> _signedIn(String v) async {await secureStorage.write(key:'sujaai_token',value:v);if(mounted)setState(()=>token=v);}
+ Future<void> _signOut() async {await GoogleSignIn().signOut();await secureStorage.delete(key:'sujaai_token');if(mounted)setState(()=>token=null);}
  @override Widget build(BuildContext c)=>token==null?LoginPage(onSignedIn:_signedIn):WorkspacePage(token:token!,onSignOut:_signOut);
 }
 class LoginPage extends StatefulWidget {final ValueChanged<String> onSignedIn;const LoginPage({super.key,required this.onSignedIn});@override State<LoginPage> createState()=>_LoginPageState();}
