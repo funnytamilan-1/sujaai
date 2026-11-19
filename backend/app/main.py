@@ -53,6 +53,17 @@ def ensure_single_admin():
             admin = User(email=email, hashed_password=hash_password(settings.admin_password))
             db.add(admin)
             db.commit()
+        else:
+            # Environment credentials are the source of truth. Keep the stored
+            # hash synchronized so changing ADMIN_PASSWORD does not cause a
+            # permanent 401 for an otherwise correct administrator login.
+            try:
+                password_matches = verify_password(settings.admin_password, admin.hashed_password)
+            except (ValueError, TypeError):
+                password_matches = False
+            if not password_matches:
+                admin.hashed_password = hash_password(settings.admin_password)
+                db.commit()
     finally:
         db.close()
 
