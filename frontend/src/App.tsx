@@ -11,6 +11,25 @@ type PeriodRow={period:string;total:string;entries:number};
 type AuditRow={id:number;actor:string;action:string;entity_type:string;entity_id:string;details:string;created_at:string};
 type Page="dashboard"|"groups"|"members"|"payments"|"reports"|"backup"|"resume"|"pvc"|"users";
 const API = ((import.meta as any).env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+const IS_PRODUCTION = Boolean((import.meta as any).env.PROD);
+
+async function readApiResponse(response: Response): Promise<any> {
+ const raw = await response.text();
+ if (!raw) return {};
+ const contentType = response.headers.get("content-type") || "";
+ if (contentType.includes("application/json")) {
+  try { return JSON.parse(raw); }
+  catch { throw new Error(`Backend returned invalid JSON (HTTP ${response.status}).`); }
+ }
+ const preview = raw.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 160);
+ throw new Error(`Backend returned a non-JSON page (HTTP ${response.status}). Check the frontend VITE_API_BASE_URL points to the deployed SUJAAI backend origin, without /api. Response: ${preview || "empty response"}`);
+}
+
+function ensureApiConfigured(): void {
+ if (IS_PRODUCTION && !API) {
+  throw new Error("VITE_API_BASE_URL is missing in the frontend Vercel project. Set it to your SUJAAI backend origin (for example https://your-api.vercel.app), then redeploy the frontend.");
+ }
+}
 const today=new Date().toISOString().slice(0,10);
 const money=(v:string|number)=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(v||0));
 
@@ -35,10 +54,11 @@ export default function App(){
  const [newUser,setNewUser]=useState({email:"",password:"",role:"staff"});
 
  const request=useCallback(async <T = unknown,>(path:string,init:RequestInit={}):Promise<T>=>{
-  const response=await fetch(API+path,{...init,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{}),...init.headers}});
+  ensureApiConfigured();
+  const response=await fetch(API+path,{...init,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{ }),...init.headers}});
   if(response.status===401){sessionStorage.removeItem("sujaai_token");setToken("");throw new Error("Session expired. Sign in again.");}
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.detail||"Request failed");
+  const data=await readApiResponse(response);
+  if(!response.ok)throw new Error(data.detail||`Request failed (HTTP ${response.status})`);
   return data as T;
  },[token]);
 
@@ -62,7 +82,7 @@ export default function App(){
  useEffect(()=>{if(token&&page==="backup"&&(role==="owner"||role==="admin"))request<AuditRow[]>("/api/audit?limit=50").then(setAuditRows).catch(e=>setNotice(e.message));},[token,page,role,request]);
  useEffect(()=>{localStorage.setItem("sujaai_theme",dark?"dark":"light");},[dark]);
 
- async function signIn(e:FormEvent){e.preventDefault();setBusy(true);setNotice("");try{const res=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error(data.detail||"Sign in failed");sessionStorage.setItem("sujaai_token",data.access_token);setToken(data.access_token);setPassword("");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
+ async function signIn(e:FormEvent){e.preventDefault();setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await readApiResponse(res);if(!res.ok)throw new Error(data.detail||`Sign in failed (HTTP ${res.status})`);if(!data.access_token)throw new Error("Backend login response did not contain an access token.");sessionStorage.setItem("sujaai_token",data.access_token);setToken(data.access_token);setPassword("");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  function logout(){sessionStorage.removeItem("sujaai_token");setToken("");setPage("dashboard");}
 
  async function createGroup(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/chit/groups",{method:"POST",body:JSON.stringify({...groupForm,default_amount:Number(groupForm.default_amount)})});setGroupForm({group_code:"",name:"",chit_type:"monthly",default_amount:"",start_date:today,description:""});await refresh();setNotice("Group created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
