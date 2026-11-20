@@ -135,3 +135,13 @@ class BackupImport(BaseModel):
     groups: list[dict] = Field(default_factory=list)
     members: list[dict] = Field(default_factory=list)
     payments: list[dict] = Field(default_factory=list)
+
+
+class SavedDesignCreate(BaseModel):
+    design_type: Literal["resume", "pvc"]
+    title: str = Field(min_length=1, max_length=120)
+    data: dict
+
+class SavedDesignUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    data: dict | None = None
