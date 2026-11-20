@@ -37,7 +37,7 @@ python -m venv .venv
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env
-uvicorn app.main:app --reload
+alembic upgrade head\nuvicorn app.main:app --reload
 ```
 
 API documentation: `http://127.0.0.1:8000/docs`
@@ -113,7 +113,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 ## Data safety
 
 - Take a database backup before deploying or changing schemas.
-- SQLAlchemy `create_all` creates missing tables; it does not perform general migrations. The saved-designs table is additive; existing chit table definitions are retained. Use Alembic before future column-changing releases.
+- Alembic manages database schema versions. The initial baseline creates missing SUJAAI tables without dropping existing tables or records; it does not rewrite existing columns. Add explicit Alembic revisions for every future schema change and take a backup before applying them.
 - JSON restore is owner-only, transactional, and refuses to overwrite a non-empty chit database. It is not a merge operation.
 - Deactivated staff/admin accounts are rejected on subsequent authenticated API requests.
 - Payment corrections are audited; no payment delete endpoint is exposed.
