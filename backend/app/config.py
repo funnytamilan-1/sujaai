@@ -111,12 +111,13 @@ def load_settings() -> Settings:
 
     frontend_url_raw = os.getenv("FRONTEND_URL", "").strip()
     frontend_url = _origin(frontend_url_raw, "FRONTEND_URL") if frontend_url_raw else ""
-    origin_default = "" if app_env == "production" else "http://localhost:5173,http://127.0.0.1:5173"\n    raw_origins = _csv(os.getenv("CORS_ORIGINS", origin_default))
+    origin_default = "" if app_env == "production" else "http://localhost:5173,http://127.0.0.1:5173"
+    raw_origins = _csv(os.getenv("CORS_ORIGINS", origin_default))
     origins = tuple(_origin(item, "CORS_ORIGINS") for item in raw_origins)
     if frontend_url and frontend_url not in origins:
         origins = (*origins, frontend_url)
-    if app_env == "production" and not origins:
-        raise RuntimeError("Set CORS_ORIGINS or FRONTEND_URL to your deployed frontend website origin")
+    if app_env == "production" and not any(urlsplit(item).scheme == "https" for item in origins):
+        raise RuntimeError("Set FRONTEND_URL or CORS_ORIGINS to at least one deployed HTTPS frontend origin")
     if "*" in origins:
         raise RuntimeError("Wildcard CORS origins are not allowed")
 
