@@ -26,8 +26,24 @@ async function readApiResponse(response: Response): Promise<any> {
 }
 
 function ensureApiConfigured(): void {
- if (IS_PRODUCTION && !API) {
-  throw new Error("VITE_API_BASE_URL is missing in the frontend Vercel project. Set it to your SUJAAI backend origin (for example https://your-api.vercel.app), then redeploy the frontend.");
+ if (!IS_PRODUCTION) return;
+ if (!API) {
+  throw new Error("Backend URL is not configured. In the FRONTEND Vercel project, set VITE_API_BASE_URL to your backend origin (https://your-backend.vercel.app), then redeploy the frontend.");
+ }
+ let parsed: URL;
+ try {
+  parsed = new URL(API);
+ } catch {
+  throw new Error("VITE_API_BASE_URL must be a complete backend URL starting with https://. Do not use a relative path such as /api.");
+ }
+ if (parsed.protocol !== "https:") {
+  throw new Error("Production VITE_API_BASE_URL must use https://.");
+ }
+ if (parsed.origin === window.location.origin) {
+  throw new Error("VITE_API_BASE_URL points to this frontend website, not the backend. Set it to the separate FastAPI backend Vercel domain.");
+ }
+ if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
+  throw new Error("VITE_API_BASE_URL must contain only the backend origin, without /api, extra paths, query strings or fragments.");
  }
 }
 const today=new Date().toISOString().slice(0,10);
@@ -87,6 +103,7 @@ export default function App(){
  useEffect(()=>{if(token&&page==="backup"&&(role==="owner"||role==="admin"))request<AuditRow[]>("/api/audit?limit=50").then(setAuditRows).catch(e=>setNotice(e.message));},[token,page,role,request]);
  useEffect(()=>{localStorage.setItem("sujaai_theme",dark?"dark":"light");},[dark]);
 
+ async function checkBackend(){setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/health",{headers:{Accept:"application/json"}});const data=await readApiResponse(res);if(!res.ok)throw new Error(`Backend health check failed (HTTP ${res.status}).`);if(data.status!=="ok")throw new Error("The configured URL did not return the SUJAAI API health response.");setNotice("Backend connected successfully. API health: OK.");}catch(e){const message=(e as Error).message||"Connection failed.";setNotice(message==="Failed to fetch"?"Cannot reach the backend. Check the backend deployment and allow this frontend origin in CORS_ORIGINS.":message);}finally{setBusy(false);}}
  async function signIn(e:FormEvent){e.preventDefault();setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await readApiResponse(res);if(!res.ok)throw new Error(data.detail||`Sign in failed (HTTP ${res.status})`);if(!data.access_token)throw new Error("Backend login response did not contain an access token.");sessionStorage.setItem("sujaai_token",data.access_token);setToken(data.access_token);setPassword("");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  function logout(){sessionStorage.removeItem("sujaai_token");setToken("");setPage("dashboard");}
 
@@ -101,7 +118,7 @@ export default function App(){
  async function createStaff(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/users",{method:"POST",body:JSON.stringify(newUser)});setNewUser({email:"",password:"",role:"staff"});await refresh();setNotice("User account created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  async function toggleUser(u:User){try{await request(`/api/users/${u.id}`,{method:"PATCH",body:JSON.stringify({is_active:!u.is_active})});await refresh();}catch(e){setNotice((e as Error).message);}}
 
- async function download(path:string,filename:string):Promise<boolean>{try{const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){setNotice((e as Error).message);return false;}}
+ async function download(path:string,filename:string):Promise<boolean>{try{ensureApiConfigured();const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){setNotice((e as Error).message);return false;}}
  async function importBackup(file?:File){if(!file)return;setBusy(true);try{const parsed=JSON.parse(await file.text());if(!window.confirm("Restore this backup into an empty chit database? Existing chit records will not be overwritten."))return;const result=await request<{restored:boolean}>("/api/backup/json/restore",{method:"POST",body:JSON.stringify(parsed)});await refresh();setNotice(result.restored?"Backup restored.":"Restore not completed.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  const filteredMembers=useMemo(()=>members.filter(m=>(!groupFilter||m.group_id===groupFilter)&&[m.name,m.member_code,m.mobile].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[members,groupFilter,search]);
  const filteredPayments=useMemo(()=>payments.filter(p=>(!groupFilter||members.find(m=>m.id===p.member_id)?.group_id===groupFilter)&&[p.payment_ref,p.recorded_by,members.find(m=>m.id===p.member_id)?.name||""].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[payments,members,groupFilter,search]);
@@ -146,6 +163,7 @@ export default function App(){
    <button disabled={busy}>{busy?"Signing in…":"Sign in to SUJAAI"} <span aria-hidden="true">→</span></button>
   </form>
   {notice&&<p className="notice error">{notice}</p>}
+  <button type="button" className="secondary backend-test" onClick={checkBackend} disabled={busy}>Check backend connection</button>
   <p className="login-security"><span>✓</span> Protected sign-in · Role-based workspace access</p>
   <p className="tiny">Need access? Ask your system owner to create an account.</p>
  </section>
