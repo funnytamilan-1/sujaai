@@ -135,3 +135,31 @@ def test_period_report_and_excel_backup():
     assert "spreadsheetml" in workbook.headers["content-type"]
     bad_range = client.get("/api/chit/reports/summary?start=2026-03-03&end=2026-03-01", headers=headers)
     assert bad_range.status_code == 422
+
+def test_saved_designs_persist_and_are_private_to_account():
+    owner = owner_headers()
+    saved = client.post("/api/designs", headers=owner, json={
+        "design_type": "resume", "title": "My resume",
+        "data": {"name": "Example Person", "skills": ["Python", "HTML"]}
+    })
+    assert saved.status_code == 201
+    design_id = saved.json()["id"]
+    assert client.get("/api/designs?design_type=resume", headers=owner).json()[0]["title"] == "My resume"
+    updated = client.put(f"/api/designs/{design_id}", headers=owner, json={
+        "title": "Updated resume", "data": {"name": "Example Person", "skills": ["Python"]}
+    })
+    assert updated.status_code == 200
+    assert updated.json()["data"]["skills"] == ["Python"]
+
+    created = client.post("/api/users", headers=owner, json={
+        "email": "designer@example.test", "password": "long-enough-test-password", "role": "staff"
+    })
+    assert created.status_code == 201
+    login = client.post("/api/auth/login", json={
+        "email": "designer@example.test", "password": "long-enough-test-password"
+    })
+    staff = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get(f"/api/designs/{design_id}", headers=staff).status_code == 404
+    assert client.put(f"/api/designs/{design_id}", headers=staff, json={"title": "Hijack"}).status_code == 404
+    assert client.delete(f"/api/designs/{design_id}", headers=owner).status_code == 204
+    assert client.get("/api/designs?design_type=resume", headers=owner).json() == []
