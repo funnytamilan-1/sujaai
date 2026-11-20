@@ -394,3 +394,10 @@ def delete_saved_design(design_id: int, db: Session = Depends(get_db), user=Depe
     db.delete(item)
     db.commit()
     return None
+
+@app.get("/api/designs/{design_id}")
+def get_saved_design(design_id: int, db: Session = Depends(get_db), user=Depends(current_user)):
+    item = db.get(models.SavedDesign, design_id)
+    if not item or item.owner_email != user["email"]:
+        raise HTTPException(404, "Saved design not found")
+    return saved_design_out(item)
