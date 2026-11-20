@@ -89,7 +89,17 @@ app.add_middleware(
     RequestSizeLimitMiddleware,
     max_body_bytes=settings.max_request_body_bytes,
 )
-app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=settings.cors_allow_credentials, allow_methods=list(settings.cors_allow_methods), allow_headers=list(settings.cors_allow_headers))
+# Keep the canonical production frontend allowed even if a stale hosting-level
+# CORS_ORIGINS value overrides the repository defaults. Preserve any additional
+# explicitly configured origins.
+cors_origins = tuple(dict.fromkeys((*settings.cors_origins, "https://sujaa.vercel.app")))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(cors_origins),
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=list(settings.cors_allow_methods),
+    allow_headers=list(settings.cors_allow_headers),
+)
 
 @app.on_event("startup")
 def initialize_database_schema():
