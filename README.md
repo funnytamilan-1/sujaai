@@ -62,13 +62,17 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 
 ## Deployment
 
-### Render backend
+### Render backend (recommended)
 
 - Create a Docker Web Service from this repository.
 - Root Directory: `backend`.
-- Health check: `/api/health`.
-- Configure `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CORS_ORIGINS` and a strong `SECRET_KEY`.
-- Use managed PostgreSQL and HTTPS for production.
+- Health check: `/api/health/ready` (checks both the API process and database connection).
+- Connect a managed PostgreSQL database and set its internal connection string as `DATABASE_URL`.
+- Set `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` (minimum 12 characters).
+- Render generates `SECRET_KEY` from the Blueprint. Keep it stable between deployments; changing it invalidates existing login tokens.
+- Set `FRONTEND_URL` to the exact deployed frontend origin, for example `https://sujaai.vercel.app`.
+- Set `CORS_ORIGINS` to a comma-separated list of exact frontend origins, for example `https://sujaai.vercel.app,https://www.example.com`. Do not include `/api`, page paths, or trailing routes.
+- Never put secrets in GitHub files, frontend variables, screenshots, or chat.
 
 ### Vercel frontend
 
@@ -76,8 +80,22 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - Root Directory: `frontend`.
 - Build command: `npm run build`.
 - Output directory: `dist`.
-- Set `VITE_API_BASE_URL` to the backend origin, e.g. `https://your-api.onrender.com` (do not append `/api`).
-- Add the exact Vercel frontend origin to backend `CORS_ORIGINS`.
+- Set `VITE_API_BASE_URL` to the backend origin only, e.g. `https://sujaai-api.onrender.com` (do not append `/api`).
+- For a custom frontend domain, add that exact origin to the backend's `CORS_ORIGINS` value and redeploy the backend.
+- The Vercel frontend project should not run the FastAPI backend when using the recommended Render architecture.
+
+### Environment variable reference
+
+| Variable | Where | Purpose |
+|---|---|---|
+| `APP_ENV` | Backend | `development`, `test`, `staging`, or `production` |
+| `SECRET_KEY` | Backend secret | JWT signing key; 32+ characters |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Backend secret | Initial owner login credentials |
+| `DATABASE_URL` | Backend secret | PostgreSQL connection URL in production |
+| `FRONTEND_URL` | Backend | Primary frontend website origin |
+| `CORS_ORIGINS` | Backend | Additional/allowed frontend website origins, comma-separated |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Backend | JWT lifetime; default 480 minutes |
+| `VITE_API_BASE_URL` | Vercel frontend | Backend origin; do not include `/api` |
 
 ## API overview
 
