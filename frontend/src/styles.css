@@ -557,3 +557,7 @@ footer span{float:right}
  .dashboard-action>span{height:25px;width:25px}
  .trend-value{font-size:6px}
 }
+
+.backend-test{width:100%;margin-top:15px;min-height:40px;font-size:10px}
+.login-card .backend-test{justify-content:center}
+.dark .login-card{background:#221e36;border-color:#37314f;color:#f0edf9}
