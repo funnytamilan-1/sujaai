@@ -349,6 +349,12 @@ def saved_design_out(item):
             "data": json.loads(item.data), "created_at": item.created_at,
             "updated_at": item.updated_at}
 
+def serialize_design_data(data):
+    serialized = json.dumps(data, ensure_ascii=False)
+    if len(serialized.encode("utf-8")) > 6 * 1024 * 1024:
+        raise HTTPException(413, "Design data is too large. Reduce image sizes and try again.")
+    return serialized
+
 @app.get("/api/designs")
 def list_saved_designs(design_type: str | None = Query(default=None, pattern="^(resume|pvc)$"),
                        db: Session = Depends(get_db), user=Depends(current_user)):
