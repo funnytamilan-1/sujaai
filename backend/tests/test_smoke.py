@@ -213,3 +213,17 @@ def test_frontend_cors_preflight_and_error_responses_are_allowed():
     missing = client.get("/api/does-not-exist", headers={"Origin": origin})
     assert missing.status_code == 404
     assert missing.headers["access-control-allow-origin"] == origin
+
+def test_sujaai_production_frontend_origin_is_allowed():
+    origin = "https://sujaai.vercel.app"
+    response = client.options(
+        "/api/chit/groups",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
