@@ -367,7 +367,7 @@ def saved_design_out(item):
 
 def serialize_design_data(data):
     serialized = json.dumps(data, ensure_ascii=False)
-    if len(serialized.encode("utf-8")) > settings.max_request_body_bytes:
+    if len(serialized.encode("utf-8")) > settings.max_design_payload_bytes:
         raise HTTPException(413, "Design data is too large. Reduce image sizes and try again.")
     return serialized
 
