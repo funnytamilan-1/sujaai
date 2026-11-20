@@ -1,5 +1,5 @@
 """SQLAlchemy database engine and request-scoped sessions."""
-from sqlalchemy import os
+import os
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
