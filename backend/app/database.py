@@ -1,4 +1,6 @@
 """SQLAlchemy database engine and request-scoped sessions."""
+from sqlalchemy import os
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -27,9 +29,12 @@ engine_options = {
     "pool_recycle": settings.db_pool_recycle_seconds,
 }
 if not is_sqlite:
+    # Vercel creates multiple short-lived function instances. Keep each
+    # instance's pool small so aggregate connections do not overwhelm Postgres.
+    on_vercel = os.getenv("VERCEL", "").lower() == "1"
     engine_options.update(
-        pool_size=settings.db_pool_size,
-        max_overflow=settings.db_max_overflow,
+        pool_size=1 if on_vercel else settings.db_pool_size,
+        max_overflow=0 if on_vercel else settings.db_max_overflow,
         pool_timeout=settings.db_pool_timeout_seconds,
     )
 
