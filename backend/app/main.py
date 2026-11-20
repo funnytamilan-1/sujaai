@@ -18,7 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from xml.sax.saxutils import escape
-from .database import Base, engine, get_db
+from .database import engine, get_db
 from .config import settings
 from . import models, schemas
 from .security import issue_token, verify_admin, current_user, require_roles, hash_password, verify_password
@@ -84,7 +84,6 @@ class RequestSizeLimitMiddleware:
         await self.app(scope, receive_buffered, send)
 
 
-Base.metadata.create_all(bind=engine)
 app = FastAPI(title=settings.api_title, version=settings.api_version, debug=settings.debug)
 app.add_middleware(
     RequestSizeLimitMiddleware,
