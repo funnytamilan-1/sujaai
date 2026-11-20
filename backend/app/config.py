@@ -168,7 +168,7 @@ def _origin(value: str, variable: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Settings:
     app_env: str
     debug: bool
