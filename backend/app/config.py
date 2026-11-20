@@ -49,7 +49,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 480    # 8 hours; allowed range: 5–1440
 PASSWORD_MIN_LENGTH = 12
 
 # DATABASE
-DATABASE_URL = "postgresql://neondb_owner:npg_im83TMzSfujb@ep-restless-sunset-bdy360u1.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"  # Production: set PostgreSQL URL in hosting env
+DATABASE_URL = "sqlite:///./sujaai.db"  # Production: set PostgreSQL URL in hosting env
 DB_POOL_SIZE = 5
 DB_MAX_OVERFLOW = 10
 DB_POOL_RECYCLE_SECONDS = 1800
