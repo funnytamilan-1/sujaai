@@ -1,13 +1,21 @@
-"""SUJAAI backend configuration.
+"""Central configuration for the SUJAAI backend.
 
-QUICK SETUP
------------
-1. Change the non-secret defaults in CONFIG below if you want code-level defaults.
-2. Put ADMIN_EMAIL, ADMIN_PASSWORD, SECRET_KEY and DATABASE_URL in backend/.env
-   for local development, or in your hosting provider's Environment Variables.
-3. Environment variables override CONFIG values.
+QUICK EDIT (local development)
+------------------------------
+Edit the values in APP_CONFIG, SECURITY_CONFIG, DATABASE_CONFIG,
+CORS_CONFIG, LIMITS_CONFIG and STORAGE_CONFIG below.
 
-Never put real passwords, signing keys, or database credentials in this file.
+IMPORTANT:
+- Never put real passwords, SECRET_KEY, API tokens or production DB passwords here.
+- Put secrets in backend/.env locally, or your hosting provider's Environment Variables.
+- Environment variables override the code defaults below.
+- FRONTEND_URL and CORS_ORIGINS are website origins only (no /login, /api or paths).
+
+Example deployed frontend:
+    FRONTEND_URL = "https://your-site.vercel.app"
+    CORS_CONFIG["origins"] = "https://your-site.vercel.app"
+Example backend URL (set in frontend/.env, not here):
+    VITE_API_BASE_URL = "https://your-api.onrender.com"
 """
 from __future__ import annotations
 
@@ -19,41 +27,115 @@ from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
-# Loads backend/.env when running locally. Host environment variables take priority.
+# Loads backend/.env for local development. Real process environment wins.
 load_dotenv()
 
-# ============================================================
-# EASY CONFIGURATION: safe, non-secret defaults
-# Edit these values to change local defaults for SUJAAI.
-# For deployed environments, set the same names in Render/Vercel.
-# ============================================================
-CONFIG = {
-    "APP_ENV": "development",                  # development | test | staging | production
-    "DEBUG": False,                            # Keep False in production
-    "API_TITLE": "SUJAAI API",
-    "API_VERSION": "0.3.0",
-    "JWT_ALGORITHM": "HS256",                  # Currently HS256 only
-    "ACCESS_TOKEN_EXPIRE_MINUTES": 480,        # 8 hours
-    "DATABASE_URL": "sqlite:///./sujaai.db",   # Production must use PostgreSQL
-    "FRONTEND_URL": "http://localhost:5173",   # Main frontend website origin
-    "CORS_ORIGINS": (
-        "http://localhost:5173,"
-        "http://127.0.0.1:5173"
-    ),                                         # Add deployed frontend domains here
-    "DB_POOL_SIZE": 5,
-    "DB_MAX_OVERFLOW": 10,
-    "DB_POOL_RECYCLE_SECONDS": 1800,
-    "MAX_DESIGN_PAYLOAD_BYTES": 6 * 1024 * 1024,
-    "UPLOAD_DIR": "uploads",
+# =====================================================================
+# 1. APP SETTINGS — safe to edit
+# =====================================================================
+APP_CONFIG = {
+    "environment": "development",       # development | test | staging | production
+    "debug": False,                     # Always False in production
+    "name": "SUJAAI API",
+    "version": "0.3.0",
+    "timezone": "Asia/Kolkata",         # Display/business timezone preference
 }
 
-# Secret values are intentionally not stored in CONFIG.
+# =====================================================================
+# 2. SECURITY SETTINGS — non-secret settings only
+# =====================================================================
+SECURITY_CONFIG = {
+    "jwt_algorithm": "HS256",           # This application currently supports HS256
+    "access_token_expire_minutes": 480, # 8 hours; allowed range: 5–1440
+    "password_min_length": 12,          # Enforced for the production owner password
+}
+
+# =====================================================================
+# 3. DATABASE SETTINGS
+# =====================================================================
+DATABASE_CONFIG = {
+    "url": "sqlite:///./sujaai.db",     # Local only; use PostgreSQL in production
+    "pool_size": 5,
+    "max_overflow": 10,
+    "pool_recycle_seconds": 1800,
+    "pool_timeout_seconds": 30,
+    "pool_pre_ping": True,
+}
+
+# =====================================================================
+# 4. FRONTEND / CORS SETTINGS
+# =====================================================================
+CORS_CONFIG = {
+    "frontend_url": "http://localhost:5173",
+    "origins": "http://localhost:5173,http://127.0.0.1:5173",
+    "allow_credentials": True,
+    "allow_methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    "allow_headers": "Authorization,Content-Type",
+}
+
+# =====================================================================
+# 5. REQUEST / DATA LIMITS
+# =====================================================================
+LIMITS_CONFIG = {
+    "max_design_payload_bytes": 6 * 1024 * 1024,  # 6 MB
+    "max_request_body_bytes": 10 * 1024 * 1024,   # 10 MB
+    "default_page_size": 100,
+    "max_page_size": 500,
+}
+
+# =====================================================================
+# 6. FILE / STORAGE SETTINGS
+# =====================================================================
+STORAGE_CONFIG = {
+    "upload_dir": "uploads",
+    "allowed_upload_extensions": ".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.csv",
+}
+
+# Flatten sections so existing application imports remain compatible.
+# Keep this mapping simple: edit the section dictionaries above.
+CONFIG = {
+    "APP_ENV": APP_CONFIG["environment"],
+    "DEBUG": APP_CONFIG["debug"],
+    "API_TITLE": APP_CONFIG["name"],
+    "API_VERSION": APP_CONFIG["version"],
+    "APP_TIMEZONE": APP_CONFIG["timezone"],
+    "JWT_ALGORITHM": SECURITY_CONFIG["jwt_algorithm"],
+    "ACCESS_TOKEN_EXPIRE_MINUTES": SECURITY_CONFIG["access_token_expire_minutes"],
+    "PASSWORD_MIN_LENGTH": SECURITY_CONFIG["password_min_length"],
+    "DATABASE_URL": DATABASE_CONFIG["url"],
+    "DB_POOL_SIZE": DATABASE_CONFIG["pool_size"],
+    "DB_MAX_OVERFLOW": DATABASE_CONFIG["max_overflow"],
+    "DB_POOL_RECYCLE_SECONDS": DATABASE_CONFIG["pool_recycle_seconds"],
+    "DB_POOL_TIMEOUT_SECONDS": DATABASE_CONFIG["pool_timeout_seconds"],
+    "DB_POOL_PRE_PING": DATABASE_CONFIG["pool_pre_ping"],
+    "FRONTEND_URL": CORS_CONFIG["frontend_url"],
+    "CORS_ORIGINS": CORS_CONFIG["origins"],
+    "CORS_ALLOW_CREDENTIALS": CORS_CONFIG["allow_credentials"],
+    "CORS_ALLOW_METHODS": CORS_CONFIG["allow_methods"],
+    "CORS_ALLOW_HEADERS": CORS_CONFIG["allow_headers"],
+    "MAX_DESIGN_PAYLOAD_BYTES": LIMITS_CONFIG["max_design_payload_bytes"],
+    "MAX_REQUEST_BODY_BYTES": LIMITS_CONFIG["max_request_body_bytes"],
+    "DEFAULT_PAGE_SIZE": LIMITS_CONFIG["default_page_size"],
+    "MAX_PAGE_SIZE": LIMITS_CONFIG["max_page_size"],
+    "UPLOAD_DIR": STORAGE_CONFIG["upload_dir"],
+    "ALLOWED_UPLOAD_EXTENSIONS": STORAGE_CONFIG["allowed_upload_extensions"],
+}
+
+# Secrets must come from environment variables, never the committed source file.
 SECRET_KEYS = ("SECRET_KEY", "ADMIN_EMAIL", "ADMIN_PASSWORD")
 
 
 def _value(name: str, default=None):
-    """Environment/.env value first; otherwise the editable CONFIG default."""
-    return os.getenv(name, str(CONFIG.get(name, default)) if CONFIG.get(name, default) is not None else default)
+    fallback = CONFIG.get(name, default)
+    if fallback is None:
+        return os.getenv(name)
+    return os.getenv(name, str(fallback))
+
+
+def _bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _csv(value: str | None) -> tuple[str, ...]:
@@ -73,31 +155,36 @@ def _origin(value: str, variable: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
 
 
-def _bool(value) -> bool:
-    if isinstance(value, bool):
-        return value
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
 @dataclass(frozen=True)
 class Settings:
     app_env: str
     debug: bool
     api_title: str
     api_version: str
+    app_timezone: str
     secret_key: str
     jwt_algorithm: str
     access_token_expire_minutes: int
+    password_min_length: int
     admin_email: str
     admin_password: str
     database_url: str
-    frontend_url: str
-    cors_origins: tuple[str, ...]
     db_pool_size: int
     db_max_overflow: int
     db_pool_recycle_seconds: int
+    db_pool_timeout_seconds: int
+    db_pool_pre_ping: bool
+    frontend_url: str
+    cors_origins: tuple[str, ...]
+    cors_allow_credentials: bool
+    cors_allow_methods: tuple[str, ...]
+    cors_allow_headers: tuple[str, ...]
     max_design_payload_bytes: int
+    max_request_body_bytes: int
+    default_page_size: int
+    max_page_size: int
     upload_dir: str
+    allowed_upload_extensions: tuple[str, ...]
 
     @property
     def is_production(self) -> bool:
@@ -113,8 +200,8 @@ def load_settings() -> Settings:
     if not secret_key and app_env in {"development", "test"}:
         secret_key = secrets.token_urlsafe(48)
         warnings.warn(
-            "SECRET_KEY is not set; a temporary key was generated for this local process. "
-            "Set SECRET_KEY in backend/.env to keep sessions valid between restarts.",
+            "SECRET_KEY is not set; a temporary key was generated for this process. "
+            "Set SECRET_KEY in backend/.env to keep sessions valid after restart.",
             RuntimeWarning,
         )
     if len(secret_key) < 32:
@@ -125,28 +212,43 @@ def load_settings() -> Settings:
         raise RuntimeError("JWT_ALGORITHM currently supports HS256 only")
 
     try:
-        token_minutes = int(_value("ACCESS_TOKEN_EXPIRE_MINUTES", 480))
-        pool_size = int(_value("DB_POOL_SIZE", 5))
-        max_overflow = int(_value("DB_MAX_OVERFLOW", 10))
-        pool_recycle = int(_value("DB_POOL_RECYCLE_SECONDS", 1800))
-        max_payload = int(_value("MAX_DESIGN_PAYLOAD_BYTES", 6 * 1024 * 1024))
+        integer_settings = {
+            "token_minutes": int(_value("ACCESS_TOKEN_EXPIRE_MINUTES", 480)),
+            "password_min": int(_value("PASSWORD_MIN_LENGTH", 12)),
+            "pool_size": int(_value("DB_POOL_SIZE", 5)),
+            "max_overflow": int(_value("DB_MAX_OVERFLOW", 10)),
+            "pool_recycle": int(_value("DB_POOL_RECYCLE_SECONDS", 1800)),
+            "pool_timeout": int(_value("DB_POOL_TIMEOUT_SECONDS", 30)),
+            "max_design": int(_value("MAX_DESIGN_PAYLOAD_BYTES", 6 * 1024 * 1024)),
+            "max_body": int(_value("MAX_REQUEST_BODY_BYTES", 10 * 1024 * 1024)),
+            "page_size": int(_value("DEFAULT_PAGE_SIZE", 100)),
+            "max_page_size": int(_value("MAX_PAGE_SIZE", 500)),
+        }
     except (ValueError, TypeError) as exc:
-        raise RuntimeError("Token, database pool, and payload settings must be integers") from exc
+        raise RuntimeError("Numeric configuration values must be valid integers") from exc
 
-    if not 5 <= token_minutes <= 1440:
+    if not 5 <= integer_settings["token_minutes"] <= 1440:
         raise RuntimeError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 1440")
-    if pool_size < 1 or max_overflow < 0 or pool_recycle < 60:
-        raise RuntimeError("Database pool settings are outside their allowed range")
-    if not 1024 <= max_payload <= 25 * 1024 * 1024:
+    if not 8 <= integer_settings["password_min"] <= 128:
+        raise RuntimeError("PASSWORD_MIN_LENGTH must be between 8 and 128")
+    if integer_settings["pool_size"] < 1 or integer_settings["max_overflow"] < 0:
+        raise RuntimeError("DB_POOL_SIZE must be >= 1 and DB_MAX_OVERFLOW must be >= 0")
+    if integer_settings["pool_recycle"] < 60 or integer_settings["pool_timeout"] < 1:
+        raise RuntimeError("Database pool recycle/timeout values are too small")
+    if not 1024 <= integer_settings["max_design"] <= 25 * 1024 * 1024:
         raise RuntimeError("MAX_DESIGN_PAYLOAD_BYTES must be between 1 KB and 25 MB")
+    if not 1024 <= integer_settings["max_body"] <= 50 * 1024 * 1024:
+        raise RuntimeError("MAX_REQUEST_BODY_BYTES must be between 1 KB and 50 MB")
+    if not 1 <= integer_settings["page_size"] <= integer_settings["max_page_size"] <= 2000:
+        raise RuntimeError("Page-size settings must satisfy 1 <= DEFAULT_PAGE_SIZE <= MAX_PAGE_SIZE <= 2000")
 
     admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD", "")
     if app_env == "production":
         if not admin_email or "@" not in admin_email:
             raise RuntimeError("Set a valid ADMIN_EMAIL in the backend environment")
-        if len(admin_password) < 12:
-            raise RuntimeError("Set ADMIN_PASSWORD with at least 12 characters")
+        if len(admin_password) < integer_settings["password_min"]:
+            raise RuntimeError(f"Set ADMIN_PASSWORD with at least {integer_settings['password_min']} characters")
     elif bool(admin_email) != bool(admin_password):
         raise RuntimeError("Set both ADMIN_EMAIL and ADMIN_PASSWORD, or leave both empty")
 
@@ -155,37 +257,56 @@ def load_settings() -> Settings:
         raise RuntimeError("DATABASE_URL cannot be empty")
     if app_env == "production" and database_url.startswith("sqlite"):
         raise RuntimeError("Production requires a persistent PostgreSQL DATABASE_URL; SQLite is not supported")
+    if app_env == "production" and not database_url.startswith(("postgresql://", "postgres://", "postgresql+psycopg://")):
+        raise RuntimeError("Production DATABASE_URL must be a PostgreSQL connection URL")
 
     frontend_raw = str(_value("FRONTEND_URL", "")).strip()
     frontend_url = _origin(frontend_raw, "FRONTEND_URL") if frontend_raw else ""
     origin_default = "" if app_env == "production" else "http://localhost:5173,http://127.0.0.1:5173"
-    origins = tuple(
-        _origin(item, "CORS_ORIGINS")
-        for item in _csv(str(_value("CORS_ORIGINS", origin_default)))
-    )
+    origins = tuple(_origin(item, "CORS_ORIGINS") for item in _csv(str(_value("CORS_ORIGINS", origin_default))))
     if frontend_url and frontend_url not in origins:
         origins = (*origins, frontend_url)
     if app_env == "production" and not any(urlsplit(item).scheme == "https" for item in origins):
         raise RuntimeError("Set FRONTEND_URL or CORS_ORIGINS to at least one deployed HTTPS frontend origin")
+
+    methods = tuple(item.strip().upper() for item in _csv(str(_value("CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,OPTIONS"))))
+    headers = tuple(item.strip() for item in _csv(str(_value("CORS_ALLOW_HEADERS", "Authorization,Content-Type"))))
+    if not methods or not headers:
+        raise RuntimeError("CORS_ALLOW_METHODS and CORS_ALLOW_HEADERS cannot be empty")
+
+    extensions = tuple(item.strip().lower() for item in _csv(str(_value("ALLOWED_UPLOAD_EXTENSIONS", ".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.csv"))))
+    if any(not item.startswith(".") for item in extensions):
+        raise RuntimeError("ALLOWED_UPLOAD_EXTENSIONS entries must start with a dot")
 
     return Settings(
         app_env=app_env,
         debug=_bool(_value("DEBUG", app_env == "development")),
         api_title=str(_value("API_TITLE", "SUJAAI API")).strip() or "SUJAAI API",
         api_version=str(_value("API_VERSION", "0.3.0")).strip() or "0.3.0",
+        app_timezone=str(_value("APP_TIMEZONE", "Asia/Kolkata")).strip() or "Asia/Kolkata",
         secret_key=secret_key,
         jwt_algorithm=jwt_algorithm,
-        access_token_expire_minutes=token_minutes,
+        access_token_expire_minutes=integer_settings["token_minutes"],
+        password_min_length=integer_settings["password_min"],
         admin_email=admin_email,
         admin_password=admin_password,
         database_url=database_url,
+        db_pool_size=integer_settings["pool_size"],
+        db_max_overflow=integer_settings["max_overflow"],
+        db_pool_recycle_seconds=integer_settings["pool_recycle"],
+        db_pool_timeout_seconds=integer_settings["pool_timeout"],
+        db_pool_pre_ping=_bool(_value("DB_POOL_PRE_PING", True)),
         frontend_url=frontend_url,
         cors_origins=origins,
-        db_pool_size=pool_size,
-        db_max_overflow=max_overflow,
-        db_pool_recycle_seconds=pool_recycle,
-        max_design_payload_bytes=max_payload,
+        cors_allow_credentials=_bool(_value("CORS_ALLOW_CREDENTIALS", True)),
+        cors_allow_methods=methods,
+        cors_allow_headers=headers,
+        max_design_payload_bytes=integer_settings["max_design"],
+        max_request_body_bytes=integer_settings["max_body"],
+        default_page_size=integer_settings["page_size"],
+        max_page_size=integer_settings["max_page_size"],
         upload_dir=str(_value("UPLOAD_DIR", "uploads")).strip() or "uploads",
+        allowed_upload_extensions=extensions,
     )
 
 
