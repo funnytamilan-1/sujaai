@@ -49,7 +49,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 480    # 8 hours; allowed range: 5–1440
 PASSWORD_MIN_LENGTH = 12
 
 # DATABASE
-DATABASE_URL = "sqlite:///./sujaai.db"  # Production: set PostgreSQL URL in hosting env
+DATABASE_URL = "postgresql://neondb_owner:npg_im83TMzSfujb@ep-restless-sunset-bdy360u1.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"  # Production: set PostgreSQL URL in hosting env
 DB_POOL_SIZE = 5
 DB_MAX_OVERFLOW = 10
 DB_POOL_RECYCLE_SECONDS = 1800
@@ -57,8 +57,8 @@ DB_POOL_TIMEOUT_SECONDS = 30
 DB_POOL_PRE_PING = True
 
 # FRONTEND / CORS
-FRONTEND_URL = "http://localhost:5173"
-CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+FRONTEND_URL = "https://sujaa.vercel.app/"
+CORS_ORIGINS = "https://sujaa.vercel.app/"
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
 CORS_ALLOW_HEADERS = "Authorization,Content-Type"
@@ -175,12 +175,12 @@ class Settings:
     api_title: str
     api_version: str
     app_timezone: str
-    secret_key: str
+    secret_key: str = "wkl;dnjolviu437897bf49999999999fh0973ifb90rfn8mv8nrt0[555555557890gio5ui444444787i855555554555555555555555u78598d7"
     jwt_algorithm: str
     access_token_expire_minutes: int
     password_min_length: int
-    admin_email: str
-    admin_password: str
+    admin_email: str = "suja2027@gmail.com"
+    admin_password: str = "suja20271230"
     database_url: str
     db_pool_size: int
     db_max_overflow: int
