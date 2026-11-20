@@ -47,7 +47,7 @@ export default function App(){
    request<Group[]>("/api/chit/groups"),request<Member[]>("/api/chit/members?limit=500"),
    request<Payment[]>("/api/chit/payments?limit=500"),request<Summary>("/api/chit/reports/summary"),request<{email:string;role:string}>("/api/auth/me")
   ]);
-  setGroups(g);setMembers(m);setPayments(p);setSummary(s);setRole(me.role);
+  setGroups(g);setMembers(m);setPayments(p);setSummary(s);setRole(me.role);setEmail(me.email);
   if(me.role==="owner"||me.role==="admin"){const u=await request<User[]>("/api/users");setUsers(u);}
  },[request]);
 
