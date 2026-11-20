@@ -1,0 +1,45 @@
+name: SUJAAI production database migration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply reviewed Alembic migrations
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: development
+      DATABASE_URL: ${{ secrets.SUJAAI_DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate production database URL
+        shell: bash
+        run: |
+          case "$DATABASE_URL" in
+            postgresql://*|postgres://*|postgresql+psycopg://*) ;;
+            *)
+              echo "Set the SUJAAI_DATABASE_URL repository secret to a PostgreSQL URL."
+              exit 1
+              ;;
+          esac
+
+      - name: Apply database migrations
+        run: alembic upgrade head
