@@ -69,6 +69,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - Root Directory: `backend`.
 - Health check: `/api/health/ready` (checks both the API process and database connection).
 - Connect a managed PostgreSQL database and set its internal connection string as `DATABASE_URL`.
+- The backend Dockerfile runs `alembic upgrade head` before FastAPI starts and listens on Render's assigned `PORT`.
 - Set `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` (minimum 12 characters).
 - Render generates `SECRET_KEY` from the Blueprint. Keep it stable between deployments; changing it invalidates existing login tokens.
 - Set `FRONTEND_URL` to the exact deployed frontend origin, for example `https://sujaai.vercel.app`.
