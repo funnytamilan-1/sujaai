@@ -133,11 +133,24 @@ def health():
 
 @app.get("/api/health/ready")
 def readiness():
-    from sqlalchemy import text as sql_text
+    """Verify both database connectivity and the tables required by the API."""
+    from sqlalchemy import inspect, text as sql_text
+    from .database import Base
+
     try:
         with engine.connect() as connection:
             connection.execute(sql_text("SELECT 1"))
-        return {"status": "ready", "database": "connected"}
+            existing_tables = set(inspect(connection).get_table_names())
+        required_tables = set(Base.metadata.tables)
+        missing_tables = sorted(required_tables - existing_tables)
+        if missing_tables:
+            raise HTTPException(
+                status_code=503,
+                detail={"status": "not_ready", "database": "connected", "missing_tables": missing_tables},
+            )
+        return {"status": "ready", "database": "connected", "schema": "ready"}
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(503, "Database is unavailable")
 
