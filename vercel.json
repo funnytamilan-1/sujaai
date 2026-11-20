@@ -5,10 +5,5 @@
       "**": false,
       "main": true
     }
-  },
-  "functions": {
-    "api/index.py": {
-      "excludeFiles": "{backend/tests/**,backend/**/test_*.py,**/__pycache__/**,**/*.pyc}"
-    }
   }
 }
