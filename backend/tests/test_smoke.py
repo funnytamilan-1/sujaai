@@ -227,3 +227,27 @@ def test_sujaai_production_frontend_origin_is_allowed():
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == origin
 
+
+
+def test_production_frontend_cors_preflight_and_login_response():
+    origin = "https://sujaai.vercel.app"
+    preflight = client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers.get("access-control-allow-origin") == origin
+    assert "POST" in preflight.headers.get("access-control-allow-methods", "")
+    assert "content-type" in preflight.headers.get("access-control-allow-headers", "").lower()
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": origin},
+        json={"email": "unknown@example.test", "password": "incorrect-password"},
+    )
+    assert response.status_code == 401
+    assert response.headers.get("access-control-allow-origin") == origin
