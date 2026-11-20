@@ -46,7 +46,8 @@ def health():
 @app.post("/api/auth/login", response_model=schemas.TokenResponse)
 def login(payload: schemas.LoginRequest, db: Session=Depends(get_db)):
     if verify_admin(payload.email, payload.password):
-        return {"access_token":issue_token(payload.email,"owner")}
+        canonical_email = os.getenv("ADMIN_EMAIL", payload.email).strip().lower()
+        return {"access_token":issue_token(canonical_email,"owner")}
     user = db.scalar(select(models.AppUser).where(func.lower(models.AppUser.email)==payload.email.lower()))
     if not user or not user.is_active or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401,"Invalid email or password")
