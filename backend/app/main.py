@@ -47,12 +47,12 @@ def payment_or_404(db, payment_id):
 
 @app.get("/api/health")
 def health():
-    return {"status":"ok","service":"sujaai-api","version":"0.2.0"}
+    return {"status": "ok", "service": "sujaai-api", "version": settings.api_version}\n\n@app.get("/api/health/ready")\ndef readiness():\n    from sqlalchemy import text as sql_text\n    try:\n        with engine.connect() as connection:\n            connection.execute(sql_text("SELECT 1"))\n        return {"status": "ready", "database": "connected"}\n    except Exception:\n        raise HTTPException(503, "Database is unavailable")
 
 @app.post("/api/auth/login", response_model=schemas.TokenResponse)
 def login(payload: schemas.LoginRequest, db: Session=Depends(get_db)):
     if verify_admin(payload.email, payload.password):
-        canonical_email = os.getenv("ADMIN_EMAIL", payload.email).strip().lower()
+        canonical_email = settings.admin_email
         return {"access_token":issue_token(canonical_email,"owner")}
     user = db.scalar(select(models.AppUser).where(func.lower(models.AppUser.email)==payload.email.lower()))
     if not user or not user.is_active or not verify_password(payload.password, user.password_hash):
