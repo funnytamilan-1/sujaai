@@ -10,7 +10,7 @@ type User={id:number;email:string;role:string;is_active:boolean;created_at:strin
 type PeriodRow={period:string;total:string;entries:number};
 type AuditRow={id:number;actor:string;action:string;entity_type:string;entity_id:string;details:string;created_at:string};
 type Page="dashboard"|"groups"|"members"|"payments"|"reports"|"backup"|"resume"|"pvc"|"users";
-const API=(import.meta as any).env.VITE_API_BASE_URL||"";
+const API=((import.meta as any).env.VITE_API_BASE_URL||"").replace(/\\/+$/, "");
 const today=new Date().toISOString().slice(0,10);
 const money=(v:string|number)=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(v||0));
 
