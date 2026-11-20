@@ -31,64 +31,77 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # =====================================================================
-# 1. APP SETTINGS — safe to edit
+# EASY EDIT SETTINGS — change individual variables in this section.
+# Environment variables override these defaults.
+# Never put real passwords, SECRET_KEY, API tokens or DB passwords here.
 # =====================================================================
+
+# APP
+APP_ENV = "development"              # development | test | staging | production
+DEBUG = False
+API_TITLE = "SUJAAI API"
+API_VERSION = "0.3.0"
+APP_TIMEZONE = "Asia/Kolkata"
+
+# SECURITY (non-secret settings only)
+JWT_ALGORITHM = "HS256"              # This application currently supports HS256 only
+ACCESS_TOKEN_EXPIRE_MINUTES = 480    # 8 hours; allowed range: 5–1440
+PASSWORD_MIN_LENGTH = 12
+
+# DATABASE
+DATABASE_URL = "sqlite:///./sujaai.db"  # Production: set PostgreSQL URL in hosting env
+DB_POOL_SIZE = 5
+DB_MAX_OVERFLOW = 10
+DB_POOL_RECYCLE_SECONDS = 1800
+DB_POOL_TIMEOUT_SECONDS = 30
+DB_POOL_PRE_PING = True
+
+# FRONTEND / CORS
+FRONTEND_URL = "http://localhost:5173"
+CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+CORS_ALLOW_HEADERS = "Authorization,Content-Type"
+
+# REQUEST / DATA LIMITS
+MAX_DESIGN_PAYLOAD_BYTES = 6 * 1024 * 1024
+MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024
+DEFAULT_PAGE_SIZE = 100
+MAX_PAGE_SIZE = 500
+
+# FILE / STORAGE
+UPLOAD_DIR = "uploads"
+ALLOWED_UPLOAD_EXTENSIONS = ".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.csv"
+
+# Keep these compatibility dictionaries for any existing imports/code.
 APP_CONFIG = {
-    "environment": "development",       # development | test | staging | production
-    "debug": False,                     # Always False in production
-    "name": "SUJAAI API",
-    "version": "0.3.0",
-    "timezone": "Asia/Kolkata",         # Display/business timezone preference
+    "environment": APP_ENV, "debug": DEBUG, "name": API_TITLE,
+    "version": API_VERSION, "timezone": APP_TIMEZONE,
 }
-
-# =====================================================================
-# 2. SECURITY SETTINGS — non-secret settings only
-# =====================================================================
 SECURITY_CONFIG = {
-    "jwt_algorithm": "HS256",           # This application currently supports HS256
-    "access_token_expire_minutes": 480, # 8 hours; allowed range: 5–1440
-    "password_min_length": 12,          # Enforced for the production owner password
+    "jwt_algorithm": JWT_ALGORITHM,
+    "access_token_expire_minutes": ACCESS_TOKEN_EXPIRE_MINUTES,
+    "password_min_length": PASSWORD_MIN_LENGTH,
 }
-
-# =====================================================================
-# 3. DATABASE SETTINGS
-# =====================================================================
 DATABASE_CONFIG = {
-    "url": "sqlite:///./sujaai.db",     # Local only; use PostgreSQL in production
-    "pool_size": 5,
-    "max_overflow": 10,
-    "pool_recycle_seconds": 1800,
-    "pool_timeout_seconds": 30,
-    "pool_pre_ping": True,
+    "url": DATABASE_URL, "pool_size": DB_POOL_SIZE,
+    "max_overflow": DB_MAX_OVERFLOW,
+    "pool_recycle_seconds": DB_POOL_RECYCLE_SECONDS,
+    "pool_timeout_seconds": DB_POOL_TIMEOUT_SECONDS,
+    "pool_pre_ping": DB_POOL_PRE_PING,
 }
-
-# =====================================================================
-# 4. FRONTEND / CORS SETTINGS
-# =====================================================================
 CORS_CONFIG = {
-    "frontend_url": "http://localhost:5173",
-    "origins": "http://localhost:5173,http://127.0.0.1:5173",
-    "allow_credentials": True,
-    "allow_methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-    "allow_headers": "Authorization,Content-Type",
+    "frontend_url": FRONTEND_URL, "origins": CORS_ORIGINS,
+    "allow_credentials": CORS_ALLOW_CREDENTIALS,
+    "allow_methods": CORS_ALLOW_METHODS, "allow_headers": CORS_ALLOW_HEADERS,
 }
-
-# =====================================================================
-# 5. REQUEST / DATA LIMITS
-# =====================================================================
 LIMITS_CONFIG = {
-    "max_design_payload_bytes": 6 * 1024 * 1024,  # 6 MB
-    "max_request_body_bytes": 10 * 1024 * 1024,   # 10 MB
-    "default_page_size": 100,
-    "max_page_size": 500,
+    "max_design_payload_bytes": MAX_DESIGN_PAYLOAD_BYTES,
+    "max_request_body_bytes": MAX_REQUEST_BODY_BYTES,
+    "default_page_size": DEFAULT_PAGE_SIZE, "max_page_size": MAX_PAGE_SIZE,
 }
-
-# =====================================================================
-# 6. FILE / STORAGE SETTINGS
-# =====================================================================
 STORAGE_CONFIG = {
-    "upload_dir": "uploads",
-    "allowed_upload_extensions": ".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.csv",
+    "upload_dir": UPLOAD_DIR, "allowed_upload_extensions": ALLOWED_UPLOAD_EXTENSIONS,
 }
 
 # Flatten sections so existing application imports remain compatible.
