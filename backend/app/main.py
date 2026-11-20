@@ -420,3 +420,85 @@ def get_saved_design(design_id: int, db: Session = Depends(get_db), user=Depends
     if not item or item.owner_email != user["email"]:
         raise HTTPException(404, "Saved design not found")
     return saved_design_out(item)
+
+
+@app.get("/api/chit/payments/{payment_id}/pdf")
+def export_payment_pdf(payment_id: int, db: Session = Depends(get_db), user=Depends(current_user)):
+    payment = payment_or_404(db, payment_id)
+    member = member_or_404(db, payment.member_id)
+    group = group_or_404(db, member.group_id)
+    stream = BytesIO()
+    doc = SimpleDocTemplate(stream, pagesize=A4, rightMargin=22*mm, leftMargin=22*mm,
+                            topMargin=22*mm, bottomMargin=22*mm)
+    styles = getSampleStyleSheet()
+    story = [Paragraph("SUJAAI PAYMENT RECEIPT", styles["Title"]), Spacer(1, 10*mm)]
+    rows = [
+        ["Payment reference", payment.payment_ref],
+        ["Member ID", member.member_code],
+        ["Member name", member.name],
+        ["Group", group.name],
+        ["Amount (INR)", f"{payment.amount:.2f}"],
+        ["Paid at (UTC)", payment.paid_at.isoformat()],
+        ["Frequency", payment.frequency.title()],
+        ["Recorded by", payment.recorded_by],
+        ["Notes", payment.notes or "—"],
+    ]
+    safe_rows = [[Paragraph(escape(str(cell)), styles["BodyText"]) for cell in row] for row in rows]
+    table = Table(safe_rows, colWidths=[48*mm, 105*mm], hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF6EF")),
+        ("TEXTCOLOR", (0,0), (0,-1), colors.HexColor("#176B4A")),
+        ("GRID", (0,0), (-1,-1), 0.4, colors.HexColor("#DDE8E0")),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 9),
+        ("RIGHTPADDING", (0,0), (-1,-1), 9),
+        ("TOPPADDING", (0,0), (-1,-1), 8),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+    ]))
+    story.extend([table, Spacer(1, 12*mm), Paragraph("This receipt was generated from the SUJAAI payment ledger.", styles["Italic"])])
+    doc.build(story)
+    stream.seek(0)
+    safe_ref = "".join(ch for ch in payment.payment_ref if ch.isalnum() or ch in "-_")
+    return StreamingResponse(stream, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={safe_ref}.pdf"})
+
+@app.get("/api/chit/members/{member_id}/statement/excel")
+def export_member_statement(member_id: int, db: Session = Depends(get_db), user=Depends(current_user)):
+    member = member_or_404(db, member_id)
+    group = group_or_404(db, member.group_id)
+    payments = db.scalars(select(models.ChitPayment).where(
+        models.ChitPayment.member_id == member_id
+    ).order_by(models.ChitPayment.paid_at.asc())).all()
+    wb = Workbook()
+    sheet = wb.active
+    sheet.title = "Member Statement"
+    sheet.append(["SUJAAI MEMBER PAYMENT STATEMENT"])
+    sheet.append(["Member ID", member.member_code])
+    sheet.append(["Member name", member.name])
+    sheet.append(["Group", group.name])
+    sheet.append(["Mobile", member.mobile])
+    sheet.append([])
+    sheet.append(["Payment reference", "Paid at", "Frequency", "Amount (INR)", "Recorded by", "Notes"])
+    for payment in payments:
+        sheet.append([payment.payment_ref, payment.paid_at.isoformat(), payment.frequency,
+                      float(payment.amount), payment.recorded_by, payment.notes or ""])
+    sheet.append([])
+    sheet.append(["Total payments", len(payments)])
+    sheet.append(["Total paid (INR)", float(sum((p.amount for p in payments), Decimal("0.00")))])
+    for cell in sheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF", size=14)
+        cell.fill = PatternFill("solid", fgColor="176B4A")
+    for cell in sheet[7]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="176B4A")
+    sheet.freeze_panes = "A8"
+    sheet.auto_filter.ref = f"A7:F{7+len(payments)}" if payments else "A7:F7"
+    for column, width in {"A":24,"B":28,"C":16,"D":18,"E":28,"F":36}.items():
+        sheet.column_dimensions[column].width = width
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    safe_code = "".join(ch for ch in member.member_code if ch.isalnum() or ch in "-_")
+    return StreamingResponse(stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={safe_code}-statement.xlsx"})
