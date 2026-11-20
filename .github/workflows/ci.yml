@@ -43,15 +43,16 @@ jobs:
           ADMIN_PASSWORD: ci-only-password
           DATABASE_URL: sqlite:///./ci_sujaai.db
         run: pytest -q
-      - name: Verify repository-root Vercel entrypoint
-        working-directory: .
+      - name: Verify Vercel FastAPI entrypoint and API route registration
         env:
           APP_ENV: test
           SECRET_KEY: ci-only-secret-key-not-for-production-0123456789
           ADMIN_EMAIL: ci-owner@example.test
           ADMIN_PASSWORD: ci-only-password
           DATABASE_URL: sqlite:///./ci_root_entrypoint.db
-        run: python -c "import api.index; assert any(getattr(route, 'path', None) == '/api/health' for route in api.index.app.routes); print('Root Vercel entrypoint OK')"
+          PYTHONPATH: backend
+        working-directory: .
+        run: python -c "import main; paths = main.app.openapi()['paths']; required = ['/api/health', '/api/auth/login', '/api/chit/groups']; missing = [path for path in required if path not in paths]; assert not missing, f'Missing API routes: {missing}'; print('Vercel FastAPI entrypoint and API routes OK')"
 
   frontend-build:
     name: Frontend production build
