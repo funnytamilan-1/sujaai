@@ -21,7 +21,7 @@ async function readApiResponse(response: Response): Promise<any> {
   try { return JSON.parse(raw); }
   catch { throw new Error(`Backend returned invalid JSON (HTTP ${response.status}).`); }
  }
- const preview = raw.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 160);
+ const preview = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
  throw new Error(`Backend returned a non-JSON page (HTTP ${response.status}). Check the frontend VITE_API_BASE_URL points to the deployed SUJAAI backend origin, without /api. Response: ${preview || "empty response"}`);
 }
 
