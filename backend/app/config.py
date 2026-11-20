@@ -50,7 +50,7 @@ class Settings:
     db_pool_size: int
     db_max_overflow: int
     db_pool_recycle_seconds: int
-    max_request_body_bytes: int
+    max_design_payload_bytes: int
     upload_dir: str
 
     @property
@@ -83,15 +83,15 @@ def load_settings() -> Settings:
         pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
         max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
         pool_recycle = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800"))
-        max_body = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(6 * 1024 * 1024)))
+        max_body = int(os.getenv("MAX_DESIGN_PAYLOAD_BYTES", str(6 * 1024 * 1024)))
     except ValueError as exc:
-        raise RuntimeError("Token, database pool, and request-size settings must be integers") from exc
+        raise RuntimeError("Token, database pool, and design-payload settings must be integers") from exc
     if not 5 <= token_minutes <= 1440:
         raise RuntimeError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 1440")
     if pool_size < 1 or max_overflow < 0 or pool_recycle < 60:
         raise RuntimeError("Database pool settings are outside their allowed range")
     if not 1024 <= max_body <= 25 * 1024 * 1024:
-        raise RuntimeError("MAX_REQUEST_BODY_BYTES must be between 1 KB and 25 MB")
+        raise RuntimeError("MAX_DESIGN_PAYLOAD_BYTES must be between 1 KB and 25 MB")
 
     admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD", "")
@@ -137,7 +137,7 @@ def load_settings() -> Settings:
         db_pool_size=pool_size,
         db_max_overflow=max_overflow,
         db_pool_recycle_seconds=pool_recycle,
-        max_request_body_bytes=max_body,
+        max_design_payload_bytes=max_body,
         upload_dir=os.getenv("UPLOAD_DIR", "uploads").strip() or "uploads",
     )
 
