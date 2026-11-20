@@ -341,3 +341,56 @@ def export_excel(db:Session=Depends(get_db),user=Depends(require_roles("owner","
 def audit_history(limit:int=Query(100,ge=1,le=500),db:Session=Depends(get_db),user=Depends(require_roles("owner","admin"))):
     rows=db.scalars(select(models.AuditLog).order_by(models.AuditLog.created_at.desc()).limit(limit)).all()
     return [{"id":x.id,"actor":x.actor,"action":x.action,"entity_type":x.entity_type,"entity_id":x.entity_id,"details":x.details,"created_at":x.created_at} for x in rows]
+
+
+def saved_design_out(item):
+    return {"id": item.id, "design_type": item.design_type, "title": item.title,
+            "data": json.loads(item.data), "created_at": item.created_at,
+            "updated_at": item.updated_at}
+
+@app.get("/api/designs")
+def list_saved_designs(design_type: str | None = Query(default=None, pattern="^(resume|pvc)$"),
+                       db: Session = Depends(get_db), user=Depends(current_user)):
+    stmt = select(models.SavedDesign).where(models.SavedDesign.owner_email == user["email"])
+    if design_type:
+        stmt = stmt.where(models.SavedDesign.design_type == design_type)
+    rows = db.scalars(stmt.order_by(models.SavedDesign.updated_at.desc())).all()
+    return [saved_design_out(row) for row in rows]
+
+@app.post("/api/designs", status_code=201)
+def create_saved_design(payload: schemas.SavedDesignCreate,
+                        db: Session = Depends(get_db), user=Depends(current_user)):
+    item = models.SavedDesign(owner_email=user["email"], design_type=payload.design_type,
+                              title=payload.title.strip(), data=json.dumps(payload.data, ensure_ascii=False))
+    db.add(item)
+    db.flush()
+    audit(db, user["email"], "design.create", payload.design_type, item.id, {"title": item.title})
+    db.commit()
+    db.refresh(item)
+    return saved_design_out(item)
+
+@app.put("/api/designs/{design_id}")
+def update_saved_design(design_id: int, payload: schemas.SavedDesignUpdate,
+                        db: Session = Depends(get_db), user=Depends(current_user)):
+    item = db.get(models.SavedDesign, design_id)
+    if not item or item.owner_email != user["email"]:
+        raise HTTPException(404, "Saved design not found")
+    changes = payload.model_dump(exclude_unset=True)
+    if "title" in changes:
+        item.title = changes["title"].strip()
+    if "data" in changes:
+        item.data = json.dumps(changes["data"], ensure_ascii=False)
+    audit(db, user["email"], "design.update", item.design_type, item.id, {"fields": list(changes)})
+    db.commit()
+    db.refresh(item)
+    return saved_design_out(item)
+
+@app.delete("/api/designs/{design_id}", status_code=204)
+def delete_saved_design(design_id: int, db: Session = Depends(get_db), user=Depends(current_user)):
+    item = db.get(models.SavedDesign, design_id)
+    if not item or item.owner_email != user["email"]:
+        raise HTTPException(404, "Saved design not found")
+    audit(db, user["email"], "design.delete", item.design_type, item.id, {"title": item.title})
+    db.delete(item)
+    db.commit()
+    return None
