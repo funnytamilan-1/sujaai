@@ -57,8 +57,8 @@ DB_POOL_TIMEOUT_SECONDS = 30
 DB_POOL_PRE_PING = True
 
 # FRONTEND / CORS
-FRONTEND_URL = "https://sujaa.vercel.app/"
-CORS_ORIGINS = "https://sujaa.vercel.app/"
+FRONTEND_URL = "https://sujaa.vercel.app"
+CORS_ORIGINS = "https://sujaa.vercel.app"
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
 CORS_ALLOW_HEADERS = "Authorization,Content-Type"
