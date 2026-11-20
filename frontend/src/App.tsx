@@ -10,7 +10,7 @@ type User={id:number;email:string;role:string;is_active:boolean;created_at:strin
 type PeriodRow={period:string;total:string;entries:number};
 type AuditRow={id:number;actor:string;action:string;entity_type:string;entity_id:string;details:string;created_at:string};
 type Page="dashboard"|"groups"|"members"|"payments"|"reports"|"backup"|"resume"|"pvc"|"users";
-const API = ((import.meta as any).env.VITE_API_BASE_URL || "https://sujaai-pyyt.vercel.app").replace(/\/+$/, "");
+const API = ((import.meta as any).env.VITE_API_BASE_URL || "https://sujaai-5cj2.vercel.app").replace(/\/+$/, "");
 const IS_PRODUCTION = Boolean((import.meta as any).env.PROD);
 
 async function readApiResponse(response: Response): Promise<any> {
