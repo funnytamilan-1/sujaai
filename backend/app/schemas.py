@@ -145,3 +145,13 @@ class SavedDesignCreate(BaseModel):
 class SavedDesignUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     data: dict | None = None
+
+    @model_validator(mode="after")
+    def validate_update(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one field is required")
+        if "title" in self.model_fields_set and (self.title is None or not self.title.strip()):
+            raise ValueError("title cannot be empty")
+        if "data" in self.model_fields_set and self.data is None:
+            raise ValueError("data cannot be null")
+        return self
