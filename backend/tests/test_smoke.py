@@ -34,6 +34,17 @@ def test_readiness_checks_database_connection():
     assert response.status_code == 200
     assert response.json() == {"status": "ready", "database": "connected"}
 
+def test_oversized_request_body_is_rejected_before_endpoint_processing():
+    from app.config import settings
+
+    response = client.post(
+        "/api/backup/json/restore",
+        content="{}",
+        headers={"Content-Length": str(settings.max_request_body_bytes + 1)},
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Request body is too large"
+
 def test_chit_flow_and_payment_correction_audit():
     headers = owner_headers()
     assert client.get("/api/chit/groups").status_code == 200
