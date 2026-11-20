@@ -22,7 +22,7 @@ SUJAAI's current `main` branch contains a React web workspace and FastAPI backen
 
 - Frontend: React 18, TypeScript, Vite
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2
-- Database: SQLite local development; PostgreSQL recommended for production
+- Database: SQLite local development; PostgreSQL required for Vercel production
 - Authentication: 8-hour JWT; PBKDF2-SHA256 hashes for team-account passwords
 - Excel: openpyxl
 
@@ -48,7 +48,7 @@ Configure these values in `backend/.env` (never commit real credentials):
 - `SECRET_KEY`: random secret; at least 32 characters in production
 - `ADMIN_EMAIL`: initial owner email
 - `ADMIN_PASSWORD`: strong unique owner password
-- `DATABASE_URL`: local SQLite default or PostgreSQL connection URL
+- `DATABASE_URL`: local SQLite default or PostgreSQL connection URL (PostgreSQL required on Vercel)
 - `CORS_ORIGINS`: comma-separated frontend origins
 
 ### Frontend
