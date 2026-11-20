@@ -40,12 +40,12 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 def verify_admin(email: str, password: str) -> bool:
-    expected_email, expected_password = os.getenv("ADMIN_EMAIL", ""), os.getenv("ADMIN_PASSWORD", "")
+    expected_email, expected_password = settings.admin_email, settings.admin_password
     return bool(expected_email and expected_password) and hmac.compare_digest(email.lower(), expected_email.lower()) and hmac.compare_digest(password, expected_password)
 
 def issue_token(email: str, role: str = "owner") -> str:
     now = datetime.now(timezone.utc)
-    return jwt.encode({"sub": email, "role": role, "iat": now, "exp": now + timedelta(hours=8)}, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({"sub": email, "role": role, "iat": now, "exp": now + timedelta(minutes=settings.access_token_expire_minutes)}, SECRET_KEY, algorithm=ALGORITHM)
 
 def current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), db: Session = Depends(get_db)):
     try:
@@ -54,7 +54,7 @@ def current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), db
         if not email or role not in {"owner", "admin", "staff"}:
             raise ValueError("Invalid claims")
         if role == "owner":
-            configured = os.getenv("ADMIN_EMAIL", "").lower()
+            configured = settings.admin_email
             if not configured or email.lower() != configured:
                 raise ValueError("Unknown owner")
         else:
