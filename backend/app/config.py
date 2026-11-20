@@ -2,8 +2,8 @@
 
 QUICK EDIT (local development)
 ------------------------------
-Edit the values in APP_CONFIG, SECURITY_CONFIG, DATABASE_CONFIG,
-CORS_CONFIG, LIMITS_CONFIG and STORAGE_CONFIG below.
+Edit the individual uppercase variables in the EASY EDIT SETTINGS section.
+For example: APP_NAME is API_TITLE, and the website URL is FRONTEND_URL.
 
 IMPORTANT:
 - Never put real passwords, SECRET_KEY, API tokens or production DB passwords here.
@@ -13,7 +13,7 @@ IMPORTANT:
 
 Example deployed frontend:
     FRONTEND_URL = "https://your-site.vercel.app"
-    CORS_CONFIG["origins"] = "https://your-site.vercel.app"
+    CORS_ORIGINS = "https://your-site.vercel.app"
 Example backend URL (set in frontend/.env, not here):
     VITE_API_BASE_URL = "https://your-api.onrender.com"
 """
@@ -104,8 +104,8 @@ STORAGE_CONFIG = {
     "upload_dir": UPLOAD_DIR, "allowed_upload_extensions": ALLOWED_UPLOAD_EXTENSIONS,
 }
 
-# Flatten sections so existing application imports remain compatible.
-# Keep this mapping simple: edit the section dictionaries above.
+# Flatten settings so existing application imports remain compatible.
+# Edit the individual variables above; do not edit this generated mapping.
 CONFIG = {
     "APP_ENV": APP_CONFIG["environment"],
     "DEBUG": APP_CONFIG["debug"],
