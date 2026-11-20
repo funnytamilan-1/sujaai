@@ -70,3 +70,14 @@ class AppUser(Base):
     role: Mapped[str] = mapped_column(String(16), default="staff")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class SavedDesign(Base):
+    __tablename__ = "saved_designs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_email: Mapped[str] = mapped_column(String(190), index=True)
+    design_type: Mapped[str] = mapped_column(String(16), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    data: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
