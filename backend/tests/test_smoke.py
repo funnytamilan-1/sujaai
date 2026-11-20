@@ -189,14 +189,27 @@ def test_saved_designs_persist_and_are_private_to_account():
     assert client.get("/api/designs?design_type=resume", headers=owner).json() == []
 
 
-def test_frontend_cors_origin_is_allowed():
+def test_frontend_cors_preflight_and_error_responses_are_allowed():
+    origin = "https://sujaa.vercel.app"
     response = client.options(
         "/api/chit/groups",
         headers={
-            "Origin": "https://sujaa.vercel.app",
+            "Origin": origin,
             "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "authorization",
+            "Access-Control-Request-Headers": "authorization,content-type",
         },
     )
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "https://sujaa.vercel.app"
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "GET" in response.headers["access-control-allow-methods"]
+    assert "authorization" in response.headers["access-control-allow-headers"].lower()
+    assert "content-type" in response.headers["access-control-allow-headers"].lower()
+
+    # CORS headers must also be present on API errors, not only successful responses.
+    unauthorized = client.get("/api/chit/groups", headers={"Origin": origin})
+    assert unauthorized.status_code == 401
+    assert unauthorized.headers["access-control-allow-origin"] == origin
+
+    missing = client.get("/api/does-not-exist", headers={"Origin": origin})
+    assert missing.status_code == 404
+    assert missing.headers["access-control-allow-origin"] == origin
