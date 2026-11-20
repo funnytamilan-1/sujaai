@@ -89,6 +89,8 @@ Set these Environment Variables in the backend Vercel project (Production and Pr
 | `DATABASE_URL` | Persistent PostgreSQL connection URL (use the provider's pooled/serverless URL) |
 | `DB_POOL_SIZE` | `1` |
 | `DB_MAX_OVERFLOW` | `0` |
+| `MAX_REQUEST_BODY_BYTES` | `4194304` (4 MiB; below Vercel's 4.5 MB function request cap) |
+| `MAX_DESIGN_PAYLOAD_BYTES` | `3145728` (3 MiB) |
 | `FRONTEND_URL` | Exact deployed frontend origin, e.g. `https://sujaai.vercel.app` |
 | `CORS_ORIGINS` | Comma-separated exact frontend origins; no `/api` or page paths |
 
