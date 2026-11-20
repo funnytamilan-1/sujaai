@@ -387,9 +387,12 @@ def update_saved_design(design_id: int, payload: schemas.SavedDesignUpdate,
         raise HTTPException(404, "Saved design not found")
     changes = payload.model_dump(exclude_unset=True)
     if "title" in changes:
-        item.title = changes["title"].strip()
+        title = changes["title"].strip()
+        if not title:
+            raise HTTPException(422, "Design title cannot be empty")
+        item.title = title
     if "data" in changes:
-        item.data = json.dumps(changes["data"], ensure_ascii=False)
+        item.data = serialize_design_data(changes["data"])
     audit(db, user["email"], "design.update", item.design_type, item.id, {"fields": list(changes)})
     db.commit()
     db.refresh(item)
