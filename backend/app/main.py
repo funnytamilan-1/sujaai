@@ -24,7 +24,7 @@ from .security import issue_token, verify_admin, current_user, require_roles, ha
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title=settings.api_title, version=settings.api_version, debug=settings.debug)
-app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=True, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=settings.cors_allow_credentials, allow_methods=list(settings.cors_allow_methods), allow_headers=list(settings.cors_allow_headers))
 
 def audit(db, actor, action, entity_type, entity_id, details=None):
     db.add(models.AuditLog(actor=actor, action=action, entity_type=entity_type, entity_id=str(entity_id), details=json.dumps(details or {}, default=str)))
@@ -79,6 +79,8 @@ def list_users(db:Session=Depends(get_db), user=Depends(require_roles("owner","a
 
 @app.post("/api/users", response_model=schemas.UserOut, status_code=201)
 def create_user(payload:schemas.UserCreate, db:Session=Depends(get_db), user=Depends(require_roles("owner","admin"))):
+    if len(payload.password) < settings.password_min_length:
+        raise HTTPException(422, f"Password must contain at least {settings.password_min_length} characters")
     item=models.AppUser(email=payload.email.lower().strip(),password_hash=hash_password(payload.password),role=payload.role)
     db.add(item)
     try: db.commit(); db.refresh(item)
