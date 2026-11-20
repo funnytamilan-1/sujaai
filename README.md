@@ -37,7 +37,8 @@ python -m venv .venv
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env
-alembic upgrade head\nuvicorn app.main:app --reload
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
 API documentation: `http://127.0.0.1:8000/docs`
