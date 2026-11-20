@@ -1,15 +1,27 @@
-from sqlalchemy import create_engine
+"""SQLAlchemy database engine and request-scoped sessions."""
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
 from .config import settings
 
-DATABASE_URL = settings.database_url
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
-elif DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
+def normalize_database_url(url: str) -> str:
+    """Normalize hosted PostgreSQL URLs to the psycopg 3 SQLAlchemy driver."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+DATABASE_URL = normalize_database_url(settings.database_url)
 is_sqlite = DATABASE_URL.startswith("sqlite")
-connect_args = {"check_same_thread": False} if is_sqlite else {}
+
+connect_args = {}
+if is_sqlite:
+    # Avoid SQLite's short default lock wait when concurrent requests write.
+    connect_args = {"check_same_thread": False, "timeout": 30}
+
 engine_options = {
     "pool_pre_ping": settings.db_pool_pre_ping,
     "pool_recycle": settings.db_pool_recycle_seconds,
@@ -22,6 +34,16 @@ if not is_sqlite:
     )
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args, **engine_options)
+
+if is_sqlite:
+    @event.listens_for(engine, "connect")
+    def _configure_sqlite_connection(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.close()
+
+
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
@@ -35,6 +57,7 @@ class Base(DeclarativeBase):
 
 
 def get_db():
+    """Yield one SQLAlchemy session per request and always close it."""
     db = SessionLocal()
     try:
         yield db
