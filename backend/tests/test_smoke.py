@@ -28,6 +28,12 @@ def test_health():
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
+
+def test_readiness_checks_database_connection():
+    response = client.get("/api/health/ready")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "database": "connected"}
+
 def test_chit_flow_and_payment_correction_audit():
     headers = owner_headers()
     assert client.get("/api/chit/groups").status_code == 200
