@@ -367,8 +367,11 @@ def list_saved_designs(design_type: str | None = Query(default=None, pattern="^(
 @app.post("/api/designs", status_code=201)
 def create_saved_design(payload: schemas.SavedDesignCreate,
                         db: Session = Depends(get_db), user=Depends(current_user)):
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(422, "Design title cannot be empty")
     item = models.SavedDesign(owner_email=user["email"], design_type=payload.design_type,
-                              title=payload.title.strip(), data=json.dumps(payload.data, ensure_ascii=False))
+                              title=title, data=serialize_design_data(payload.data))
     db.add(item)
     db.flush()
     audit(db, user["email"], "design.create", payload.design_type, item.id, {"title": item.title})
