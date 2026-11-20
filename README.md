@@ -9,7 +9,7 @@ SUJAAI's current `main` branch contains a React web workspace and FastAPI backen
 - **Dashboard:** collection totals, group/member counts and payment counts.
 - **Chit groups:** create and edit groups, set daily/weekly/monthly frequency and contribution, pause/reactivate or complete groups.
 - **Members:** register, search, filter, edit profile details and activate/deactivate members.
-- **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. A per-payment Excel record is downloaded automatically after a successful payment entry. Deletion is intentionally unavailable.
+- **Payment ledger:** unique payment references, date/time, member/group linkage, notes and controlled corrections. A per-payment Excel record is downloaded automatically after a successful payment entry; PDF receipts and member-wise Excel statements are also available. Deletion is intentionally unavailable.
 - **Audit log:** group/member/payment/user/backup events; payment corrections include before/after values.
 - **Reports:** daily, weekly and monthly collection summaries, date filters and group totals.
 - **Team access:** owner/admin/staff roles; owner/admin can create admin/staff accounts and deactivate accounts.
@@ -84,7 +84,8 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - `POST /api/auth/login`, `GET /api/auth/me`
 - `GET|POST|PATCH /api/chit/groups`
 - `GET|POST|PATCH /api/chit/members`
-- `GET|POST|PATCH /api/chit/payments`; `GET /api/chit/payments/{id}/excel`
+- `GET|POST|PATCH /api/chit/payments`; `GET /api/chit/payments/{id}/excel`, `GET /api/chit/payments/{id}/pdf`
+- `GET /api/chit/members/{id}/statement/excel`
 - `GET /api/chit/reports/summary`, `GET /api/chit/reports/periods`
 - `GET|POST /api/users`, `PATCH /api/users/{id}`
 - `GET /api/backup/json`, `POST /api/backup/json/restore`, `GET /api/backup/excel`
@@ -101,6 +102,10 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - Do not put production credentials in source files, GitHub issues, or chat. Rotate credentials that may have appeared in older Git history.
 - Resume/PVC designs are stored in the configured database and scoped to the signed-in account. PDF output and physical card alignment depend on browser/printer settings.
 
+## Continuous integration
+
+GitHub Actions runs the backend pytest suite and the frontend TypeScript/Vite production build on pushes and pull requests targeting `main`.
+
 ## Tests
 
 ```bash
@@ -108,4 +113,4 @@ cd backend
 pytest
 ```
 
-The tests force an isolated local SQLite test database named `test_sujaai.db`; they do not use the configured production database.
+The tests force an isolated local SQLite test database named `test_sujaai.db`; they do not use the configured production database. Coverage includes authentication/roles, chit records, payment corrections, Excel/PDF exports, backups/restores and saved-design ownership.
