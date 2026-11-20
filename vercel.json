@@ -5,5 +5,16 @@
       "**": false,
       "main": true
     }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ],
+  "functions": {
+    "api/index.py": {
+      "excludeFiles": "{backend/tests/**,backend/**/test_*.py,**/__pycache__/**,**/*.pyc}"
+    }
   }
 }
