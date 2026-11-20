@@ -74,7 +74,7 @@ Deploy the backend as its own Vercel project (separate from the frontend project
 - Build Command: leave at the Vercel-detected default; do not run Uvicorn or Docker.
 - Output Directory: leave blank.
 - The Python runtime is pinned to 3.12 by `backend/.python-version`.
-- Vercel detects the FastAPI app from `backend/app/main.py` when the project Root Directory is `backend`; `backend/vercel.json` excludes tests from the function bundle.
+- The backend exposes the FastAPI instance through `backend/main.py`, a Vercel-supported root entrypoint. Set the backend project's Root Directory to `backend`; Vercel then routes requests to the FastAPI app so its router handles `/api/*` paths. `backend/vercel.json` excludes tests from the function bundle.
 - Health check after deployment: `https://YOUR-API-DOMAIN/api/health/ready`; interactive docs: `https://YOUR-API-DOMAIN/docs`.
 
 Set these Environment Variables in the backend Vercel project (Production and Preview only where appropriate):
