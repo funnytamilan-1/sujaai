@@ -91,6 +91,23 @@ app.add_middleware(
 )
 app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=settings.cors_allow_credentials, allow_methods=list(settings.cors_allow_methods), allow_headers=list(settings.cors_allow_headers))
 
+@app.on_event("startup")
+def initialize_database_schema():
+    """Create any missing SQLAlchemy tables before serving requests.
+
+    PostgreSQL advisory locking prevents simultaneous Vercel cold starts from
+    racing during the initial schema bootstrap. Existing tables and rows are
+    preserved; create_all does not alter or drop existing tables.
+    """
+    from sqlalchemy import text as sql_text
+    from .database import Base
+
+    with engine.begin() as connection:
+        if connection.dialect.name == "postgresql":
+            connection.execute(sql_text("SELECT pg_advisory_xact_lock(734921806251)"))
+        Base.metadata.create_all(bind=connection)
+
+
 def audit(db, actor, action, entity_type, entity_id, details=None):
     db.add(models.AuditLog(actor=actor, action=action, entity_type=entity_type, entity_id=str(entity_id), details=json.dumps(details or {}, default=str)))
 
