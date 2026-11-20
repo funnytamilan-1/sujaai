@@ -27,6 +27,14 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Verify database migrations on a fresh SQLite database
+        env:
+          APP_ENV: test
+          SECRET_KEY: ci-only-secret-key-not-for-production-0123456789
+          ADMIN_EMAIL: ci-owner@example.test
+          ADMIN_PASSWORD: ci-only-password
+          DATABASE_URL: sqlite:///./ci_migration.db
+        run: alembic upgrade head
       - name: Run API tests
         env:
           APP_ENV: test
