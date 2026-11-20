@@ -15,7 +15,7 @@ Example deployed frontend:
     FRONTEND_URL = "https://your-site.vercel.app"
     CORS_ORIGINS = "https://your-site.vercel.app"
 Example backend URL (set in frontend/.env, not here):
-    VITE_API_BASE_URL = "https://your-api.onrender.com"
+    VITE_API_BASE_URL = "https://your-api.vercel.app"
 """
 from __future__ import annotations
 
