@@ -175,12 +175,12 @@ class Settings:
     api_title: str
     api_version: str
     app_timezone: str
-    secret_key: str = "wkl;dnjolviu437897bf49999999999fh0973ifb90rfn8mv8nrt0[555555557890gio5ui444444787i855555554555555555555555u78598d7"
+    secret_key: str
     jwt_algorithm: str
     access_token_expire_minutes: int
     password_min_length: int
-    admin_email: str = "suja2027@gmail.com"
-    admin_password: str = "suja20271230"
+    admin_email: str
+    admin_password: str
     database_url: str
     db_pool_size: int
     db_max_overflow: int
