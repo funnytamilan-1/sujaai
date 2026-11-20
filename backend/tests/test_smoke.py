@@ -50,6 +50,12 @@ def test_chit_flow_and_payment_correction_audit():
     receipt = client.get(f"/api/chit/payments/{payment_id}/excel", headers=headers)
     assert receipt.status_code == 200
     assert "spreadsheetml" in receipt.headers["content-type"]
+    receipt_pdf = client.get(f"/api/chit/payments/{payment_id}/pdf", headers=headers)
+    assert receipt_pdf.status_code == 200
+    assert receipt_pdf.headers["content-type"] == "application/pdf"
+    statement = client.get(f"/api/chit/members/{member.json()['id']}/statement/excel", headers=headers)
+    assert statement.status_code == 200
+    assert "spreadsheetml" in statement.headers["content-type"]
     corrected = client.patch(f"/api/chit/payments/{payment_id}", headers=headers, json={"amount": "450.00"})
     assert corrected.status_code == 200
     assert corrected.json()["amount"] == "450.00"
