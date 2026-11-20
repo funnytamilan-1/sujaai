@@ -14,6 +14,7 @@ SUJAAI's current `main` branch contains a React web workspace and FastAPI backen
 - **Reports:** daily, weekly and monthly collection summaries, date filters and group totals.
 - **Team access:** owner/admin/staff roles; owner/admin can create admin/staff accounts and deactivate accounts.
 - **Backup:** Excel workbook with Summary, Groups, Members, Payments, Group Totals, Member Totals, Daily, Weekly and Monthly sheets; JSON export and owner-only JSON restore into an empty chit database.
+- **Saved designs:** Resume and PVC designs can be saved, listed, loaded, updated and deleted from the authenticated account. Each account can access only its own designs.
 - **Resume Designer:** editable profile, photo, summary, skills, languages, education, experience, projects and certifications; modern/classic/minimal layouts; browser Print / Save as PDF.
 - **PVC Card Designer:** front/back CR80 (85.6 × 54 mm) layout, editable details, optional photo/logo, generated QR code and Code 128 barcode; browser Print / Save as PDF.
 
@@ -88,16 +89,17 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 - `GET|POST /api/users`, `PATCH /api/users/{id}`
 - `GET /api/backup/json`, `POST /api/backup/json/restore`, `GET /api/backup/excel`
 - `GET /api/audit`
+- `GET|POST /api/designs`, `GET|PUT|DELETE /api/designs/{id}`
 
 ## Data safety
 
 - Take a database backup before deploying or changing schemas.
-- SQLAlchemy `create_all` creates missing tables; it does not perform general migrations. This change adds the `app_users` table and retains the existing chit table definitions. Use Alembic before future column-changing releases.
+- SQLAlchemy `create_all` creates missing tables; it does not perform general migrations. The saved-designs table is additive; existing chit table definitions are retained. Use Alembic before future column-changing releases.
 - JSON restore is owner-only, transactional, and refuses to overwrite a non-empty chit database. It is not a merge operation.
 - Deactivated staff/admin accounts are rejected on subsequent authenticated API requests.
 - Payment corrections are audited; no payment delete endpoint is exposed.
 - Do not put production credentials in source files, GitHub issues, or chat. Rotate credentials that may have appeared in older Git history.
-- Resume/PVC content is kept in browser component state for this session. PDF output and physical card alignment depend on browser/printer settings.
+- Resume/PVC designs are stored in the configured database and scoped to the signed-in account. PDF output and physical card alignment depend on browser/printer settings.
 
 ## Tests
 
