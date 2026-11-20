@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from starlette.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -22,8 +23,73 @@ from .config import settings
 from . import models, schemas
 from .security import issue_token, verify_admin, current_user, require_roles, hash_password, verify_password
 
+class RequestSizeLimitMiddleware:
+    """Enforce the configured request-body limit, including chunked requests."""
+
+    def __init__(self, app, max_body_bytes: int):
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        raw_length = headers.get(b"content-length")
+        if raw_length:
+            try:
+                if int(raw_length) > self.max_body_bytes:
+                    response = JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body is too large"},
+                    )
+                    await response(scope, receive, send)
+                    return
+            except ValueError:
+                response = JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length header"},
+                )
+                await response(scope, receive, send)
+                return
+
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            if message["type"] != "http.request":
+                continue
+            body.extend(message.get("body", b""))
+            if len(body) > self.max_body_bytes:
+                response = JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request body is too large"},
+                )
+                await response(scope, receive, send)
+                return
+            if not message.get("more_body", False):
+                break
+
+        replayed = False
+
+        async def receive_buffered():
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {"type": "http.request", "body": bytes(body), "more_body": False}
+            return await receive()
+
+        await self.app(scope, receive_buffered, send)
+
+
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title=settings.api_title, version=settings.api_version, debug=settings.debug)
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_body_bytes=settings.max_request_body_bytes,
+)
 app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins), allow_credentials=settings.cors_allow_credentials, allow_methods=list(settings.cors_allow_methods), allow_headers=list(settings.cors_allow_headers))
 
 def audit(db, actor, action, entity_type, entity_id, details=None):
@@ -83,9 +149,14 @@ def create_user(payload:schemas.UserCreate, db:Session=Depends(get_db), user=Dep
         raise HTTPException(422, f"Password must contain at least {settings.password_min_length} characters")
     item=models.AppUser(email=payload.email.lower().strip(),password_hash=hash_password(payload.password),role=payload.role)
     db.add(item)
-    try: db.commit(); db.refresh(item)
-    except IntegrityError: db.rollback(); raise HTTPException(409,"Email already registered")
-    audit(db,user["email"],"user.create","user",item.id,{"role":item.role}); db.commit()
+    try:
+        db.flush()
+        audit(db,user["email"],"user.create","user",item.id,{"role":item.role})
+        db.commit()
+        db.refresh(item)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409,"Email already registered")
     return item
 
 @app.patch("/api/users/{user_id}", response_model=schemas.UserOut)
@@ -161,9 +232,15 @@ def create_payment(payload:schemas.PaymentCreate,db:Session=Depends(get_db),user
     if group.status!="active": raise HTTPException(422,"Cannot record a payment for an inactive group")
     if payload.frequency!=group.chit_type: raise HTTPException(422,"Payment frequency must match the group's chit type")
     item=models.ChitPayment(payment_ref="PAY-"+uuid4().hex[:16].upper(),member_id=member.id,amount=payload.amount,paid_at=payload.paid_at,frequency=payload.frequency,notes=payload.notes,recorded_by=user["email"])
-    db.add(item); db.flush()
-    audit(db,user["email"],"payment.create","chit_payment",item.id,{"amount":str(item.amount),"member_id":member.id})
-    db.commit(); db.refresh(item)
+    db.add(item)
+    try:
+        db.flush()
+        audit(db,user["email"],"payment.create","chit_payment",item.id,{"amount":str(item.amount),"member_id":member.id})
+        db.commit()
+        db.refresh(item)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409,"Payment reference conflict; please retry")
     return item
 
 @app.get("/api/chit/payments",response_model=list[schemas.PaymentOut])
