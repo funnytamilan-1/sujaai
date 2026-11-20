@@ -32,7 +32,7 @@ def test_health():
 def test_readiness_checks_database_connection():
     response = client.get("/api/health/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "database": "connected"}
+    assert response.json() == {"status": "ready", "database": "connected", "schema": "ready"}
 
 def test_oversized_request_body_is_rejected_before_endpoint_processing():
     from app.config import settings
