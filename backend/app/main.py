@@ -93,12 +93,16 @@ app.add_middleware(
 # CORS_ORIGINS value overrides the repository defaults. Preserve any additional
 # explicitly configured origins.
 cors_origins = tuple(dict.fromkeys((*settings.cors_origins, "https://sujaa.vercel.app", "https://sujaai.vercel.app")))
+# Keep the browser's login preflight working even if an older hosting
+# environment variable contains an incomplete CORS method/header list.
+cors_methods = tuple(dict.fromkeys((*settings.cors_allow_methods, "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")))
+cors_headers = tuple(dict.fromkeys((*settings.cors_allow_headers, "Authorization", "Content-Type")))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(cors_origins),
     allow_credentials=settings.cors_allow_credentials,
-    allow_methods=list(settings.cors_allow_methods),
-    allow_headers=list(settings.cors_allow_headers),
+    allow_methods=list(cors_methods),
+    allow_headers=list(cors_headers),
 )
 
 @app.on_event("startup")
