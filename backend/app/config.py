@@ -111,7 +111,7 @@ def load_settings() -> Settings:
 
     frontend_url_raw = os.getenv("FRONTEND_URL", "").strip()
     frontend_url = _origin(frontend_url_raw, "FRONTEND_URL") if frontend_url_raw else ""
-    raw_origins = _csv(os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"))
+    origin_default = "" if app_env == "production" else "http://localhost:5173,http://127.0.0.1:5173"\n    raw_origins = _csv(os.getenv("CORS_ORIGINS", origin_default))
     origins = tuple(_origin(item, "CORS_ORIGINS") for item in raw_origins)
     if frontend_url and frontend_url not in origins:
         origins = (*origins, frontend_url)
