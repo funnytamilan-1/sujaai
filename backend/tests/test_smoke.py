@@ -187,3 +187,16 @@ def test_saved_designs_persist_and_are_private_to_account():
     assert client.put(f"/api/designs/{design_id}", headers=staff, json={"title": "Hijack"}).status_code == 404
     assert client.delete(f"/api/designs/{design_id}", headers=owner).status_code == 204
     assert client.get("/api/designs?design_type=resume", headers=owner).json() == []
+
+
+def test_frontend_cors_origin_is_allowed():
+    response = client.options(
+        "/api/chit/groups",
+        headers={
+            "Origin": "https://sujaa.vercel.app",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://sujaa.vercel.app"
