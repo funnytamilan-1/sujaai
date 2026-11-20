@@ -47,7 +47,8 @@ def test_oversized_request_body_is_rejected_before_endpoint_processing():
 
 def test_chit_flow_and_payment_correction_audit():
     headers = owner_headers()
-    assert client.get("/api/chit/groups").status_code == 200
+    # Chit records are protected; anonymous requests must be rejected.
+    assert client.get("/api/chit/groups").status_code == 401
     group = client.post("/api/chit/groups", headers=headers, json={
         "group_code": "TEST-G1", "name": "Test Group", "chit_type": "monthly",
         "default_amount": "500.00", "start_date": "2026-01-01"
