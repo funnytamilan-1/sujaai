@@ -370,7 +370,7 @@ def correct_payment(payment_id:int,payload:schemas.PaymentCorrection,db:Session=
     item=payment_or_404(db,payment_id)
     local_today=datetime.now(ZoneInfo(settings.app_timezone)).date()
     original_day=item.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if item.paid_at.tzinfo else item.paid_at.date()
-    requested_day=payload.paid_at.date() if payload.paid_at else original_day
+    requested_day=(payload.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if payload.paid_at.tzinfo else payload.paid_at.date()) if payload.paid_at else original_day
     needs_owner_approval=original_day!=local_today or requested_day!=local_today
     if needs_owner_approval and not verify_admin(settings.admin_email,payload.owner_password or ""):
         raise HTTPException(403,"Owner password is required to edit a payment from another day.")
