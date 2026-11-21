@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from io import BytesIO
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -236,8 +237,25 @@ def update_group(group_id:int,payload:schemas.GroupUpdate,db:Session=Depends(get
 def group_detail(group_id:int,db:Session=Depends(get_db),user=Depends(current_user)):
     group=group_or_404(db,group_id)
     count=db.scalar(select(func.count()).select_from(models.ChitMember).where(models.ChitMember.group_id==group_id)) or 0
-    total=db.scalar(select(func.coalesce(func.sum(models.ChitPayment.amount),0)).join(models.ChitMember).where(models.ChitMember.group_id==group_id)) or Decimal("0")
-    return {"group":schemas.GroupOut.model_validate(group),"total_members":count,"lifetime_collection":str(total)}
+    payment_rows=db.scalars(select(models.ChitPayment).join(models.ChitMember).where(models.ChitMember.group_id==group_id).order_by(models.ChitPayment.paid_at.desc())).all()
+    total=sum((row.amount for row in payment_rows),Decimal("0.00"))
+    today=datetime.now(ZoneInfo(settings.app_timezone)).date()
+    week_start=today-timedelta(days=today.weekday())
+    weekly={}
+    current_week_total=Decimal("0.00")
+    current_week_count=0
+    for row in payment_rows:
+        paid_day=row.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if row.paid_at.tzinfo else row.paid_at.date()
+        iso=paid_day.isocalendar()
+        key=f"{iso.year}-W{iso.week:02d}"
+        bucket=weekly.setdefault(key,{"period":key,"total":Decimal("0.00"),"entries":0})
+        bucket["total"]+=row.amount
+        bucket["entries"]+=1
+        if week_start<=paid_day<=today:
+            current_week_total+=row.amount
+            current_week_count+=1
+    weekly_totals=[{"period":v["period"],"total":str(v["total"]),"entries":v["entries"]} for _,v in sorted(weekly.items(),reverse=True)]
+    return {"group":schemas.GroupOut.model_validate(group),"total_members":count,"lifetime_collection":str(total),"payment_count":len(payment_rows),"current_week_collection":str(current_week_total),"current_week_payment_count":current_week_count,"week_start":week_start.isoformat(),"weekly_totals":weekly_totals}
 
 @app.post("/api/chit/members",response_model=schemas.MemberOut,status_code=201)
 def create_member(payload:schemas.MemberCreate,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin","staff"))):
@@ -258,6 +276,29 @@ def list_members(group_id:int|None=None,q:str|None=Query(default=None,max_length
         term=f"%{q.strip()}%"
         stmt=stmt.where((models.ChitMember.name.ilike(term))|(models.ChitMember.mobile.ilike(term))|(models.ChitMember.member_code.ilike(term)))
     return db.scalars(stmt.order_by(models.ChitMember.id.desc()).offset(offset).limit(limit)).all()
+
+@app.get("/api/chit/members/{member_id}/details")
+def member_details(member_id:int,db:Session=Depends(get_db),user=Depends(current_user)):
+    member=member_or_404(db,member_id)
+    rows=db.scalars(select(models.ChitPayment).where(models.ChitPayment.member_id==member_id).order_by(models.ChitPayment.paid_at.desc())).all()
+    total=sum((row.amount for row in rows),Decimal("0.00"))
+    today=datetime.now(ZoneInfo(settings.app_timezone)).date()
+    week_start=today-timedelta(days=today.weekday())
+    weekly={}
+    current_week_total=Decimal("0.00")
+    current_week_count=0
+    for row in rows:
+        paid_day=row.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if row.paid_at.tzinfo else row.paid_at.date()
+        iso=paid_day.isocalendar()
+        key=f"{iso.year}-W{iso.week:02d}"
+        bucket=weekly.setdefault(key,{"period":key,"total":Decimal("0.00"),"entries":0})
+        bucket["total"]+=row.amount
+        bucket["entries"]+=1
+        if week_start<=paid_day<=today:
+            current_week_total+=row.amount
+            current_week_count+=1
+    weekly_totals=[{"period":v["period"],"total":str(v["total"]),"entries":v["entries"]} for _,v in sorted(weekly.items(),reverse=True)]
+    return {"member":schemas.MemberOut.model_validate(member),"payment_count":len(rows),"lifetime_paid":str(total),"current_week_paid":str(current_week_total),"current_week_payment_count":current_week_count,"paid_weeks":len(weekly),"week_start":week_start.isoformat(),"weekly_totals":weekly_totals,"payments":[schemas.PaymentOut.model_validate(row) for row in rows]}
 
 @app.patch("/api/chit/members/{member_id}",response_model=schemas.MemberOut)
 def update_member(member_id:int,payload:schemas.MemberUpdate,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin","staff"))):
@@ -325,12 +366,18 @@ def export_payment_excel(payment_id:int,db:Session=Depends(get_db),user=Depends(
     return StreamingResponse(stream,media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",headers={"Content-Disposition":f"attachment; filename={safe_ref}.xlsx"})
 
 @app.patch("/api/chit/payments/{payment_id}",response_model=schemas.PaymentOut)
-def correct_payment(payment_id:int,payload:schemas.PaymentUpdate,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin"))):
+def correct_payment(payment_id:int,payload:schemas.PaymentCorrection,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin","staff"))):
     item=payment_or_404(db,payment_id)
+    local_today=datetime.now(ZoneInfo(settings.app_timezone)).date()
+    original_day=item.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if item.paid_at.tzinfo else item.paid_at.date()
+    requested_day=payload.paid_at.date() if payload.paid_at else original_day
+    needs_owner_approval=original_day!=local_today or requested_day!=local_today
+    if needs_owner_approval and not verify_admin(settings.admin_email,payload.owner_password or ""):
+        raise HTTPException(403,"Owner password is required to edit a payment from another day.")
     before={"amount":str(item.amount),"paid_at":item.paid_at.isoformat(),"notes":item.notes}
-    changes=payload.model_dump(exclude_unset=True)
+    changes=payload.model_dump(exclude={"owner_password"},exclude_unset=True)
     for key,value in changes.items(): setattr(item,key,value)
-    audit(db,user["email"],"payment.correct","chit_payment",item.id,{"before":before,"after":{k:str(v) for k,v in changes.items()}})
+    audit(db,user["email"],"payment.correct","chit_payment",item.id,{"before":before,"after":{k:str(v) for k,v in changes.items()},"owner_approved":needs_owner_approval})
     db.commit(); db.refresh(item)
     return item
 
