@@ -11,3 +11,4 @@ uploads/*
 !uploads/.gitkeep
 *.db
 .DS_Store
+*memory_export*.json
