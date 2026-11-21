@@ -245,7 +245,7 @@ def group_detail(group_id:int,db:Session=Depends(get_db),user=Depends(current_us
     current_week_total=Decimal("0.00")
     current_week_count=0
     for row in payment_rows:
-        paid_day=row.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if row.paid_at.tzinfo else row.paid_at.date()
+        paid_day=(row.paid_at.replace(tzinfo=timezone.utc) if row.paid_at.tzinfo is None else row.paid_at).astimezone(ZoneInfo(settings.app_timezone)).date()
         iso=paid_day.isocalendar()
         key=f"{iso.year}-W{iso.week:02d}"
         bucket=weekly.setdefault(key,{"period":key,"total":Decimal("0.00"),"entries":0})
@@ -288,7 +288,7 @@ def member_details(member_id:int,db:Session=Depends(get_db),user=Depends(current
     current_week_total=Decimal("0.00")
     current_week_count=0
     for row in rows:
-        paid_day=row.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if row.paid_at.tzinfo else row.paid_at.date()
+        paid_day=(row.paid_at.replace(tzinfo=timezone.utc) if row.paid_at.tzinfo is None else row.paid_at).astimezone(ZoneInfo(settings.app_timezone)).date()
         iso=paid_day.isocalendar()
         key=f"{iso.year}-W{iso.week:02d}"
         bucket=weekly.setdefault(key,{"period":key,"total":Decimal("0.00"),"entries":0})
@@ -369,7 +369,7 @@ def export_payment_excel(payment_id:int,db:Session=Depends(get_db),user=Depends(
 def correct_payment(payment_id:int,payload:schemas.PaymentCorrection,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin","staff"))):
     item=payment_or_404(db,payment_id)
     local_today=datetime.now(ZoneInfo(settings.app_timezone)).date()
-    original_day=item.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if item.paid_at.tzinfo else item.paid_at.date()
+    original_day=(item.paid_at.replace(tzinfo=timezone.utc) if item.paid_at.tzinfo is None else item.paid_at).astimezone(ZoneInfo(settings.app_timezone)).date()
     requested_day=(payload.paid_at.astimezone(ZoneInfo(settings.app_timezone)).date() if payload.paid_at.tzinfo else payload.paid_at.date()) if payload.paid_at else original_day
     needs_owner_approval=original_day!=local_today or requested_day!=local_today
     if needs_owner_approval and not verify_admin(settings.admin_email,payload.owner_password or ""):
