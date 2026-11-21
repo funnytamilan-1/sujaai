@@ -41,7 +41,7 @@ function connectionErrorMessage(error:unknown):string{
 function ensureApiConfigured(): void {
  if (!IS_PRODUCTION) return;
  if (!API) {
-  throw new Error("Backend URL is not configured. In the FRONTEND Vercel project, set VITE_API_BASE_URL to your backend origin (https://your-backend.vercel.app), then redeploy the frontend.");
+  throw new Error("Backend URL is not configured. In the FRONTEND Vercel project, set VITE_API_BASE_URL to your backend origin (for example, https://your-backend.onrender.com), then redeploy the frontend.");
  }
  let parsed: URL;
  try {
@@ -53,7 +53,7 @@ function ensureApiConfigured(): void {
   throw new Error("Production VITE_API_BASE_URL must use https://.");
  }
  if (parsed.origin === window.location.origin) {
-  throw new Error("VITE_API_BASE_URL points to this frontend website, not the backend. Set it to the separate FastAPI backend Vercel domain.");
+  throw new Error("VITE_API_BASE_URL points to this frontend website, not the backend. Set it to your separate FastAPI backend origin, for example https://your-backend.onrender.com.");
  }
  if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
   throw new Error("VITE_API_BASE_URL must contain only the backend origin, without /api, extra paths, query strings or fragments.");
