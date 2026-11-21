@@ -561,3 +561,54 @@ footer span{float:right}
 .backend-test{width:100%;margin-top:15px;min-height:40px;font-size:10px}
 .login-card .backend-test{justify-content:center}
 .dark .login-card{background:#221e36;border-color:#37314f;color:#f0edf9}
+
+
+/* Nested chit workspace */
+.chit-add-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:42px;padding:0 17px;border-radius:12px;background:linear-gradient(120deg,#5c49a6,#277f65);color:#fff;font-size:11px;font-weight:800;box-shadow:0 8px 20px #5544a122}
+.chit-add-button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.chit-add-button:disabled{opacity:.5;cursor:not-allowed}
+.chit-add-button span{font-size:19px;line-height:1}
+.chit-form-panel{border-color:#dcd5f2;box-shadow:0 12px 30px #4434770d}
+.chit-group-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.chit-group-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0;padding:20px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);transition:transform .18s,border-color .18s,box-shadow .18s}
+.chit-group-card:hover{transform:translateY(-3px);border-color:#bcb0e8;box-shadow:0 15px 32px #2b205010}
+.chit-group-card-top{display:flex;align-items:center;justify-content:space-between;width:100%}
+.chit-group-symbol{height:42px;width:42px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(140deg,#f0edff,#e8f8ef);color:#6651b5;font-size:20px;font-weight:900}
+.chit-group-card>small{font-size:9px;letter-spacing:1.2px;color:#9a94ad;font-weight:800}
+.chit-group-card>strong{font:800 16px Manrope;color:var(--ink);overflow-wrap:anywhere}
+.chit-group-meta{font-size:10px;color:#918ca2;text-transform:capitalize}
+.chit-group-card-stats{display:flex;justify-content:space-between;gap:10px;width:100%;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:9px;color:#938da5}
+.chit-group-card-stats span{display:flex;flex-direction:column;gap:4px}
+.chit-group-card-stats b{font:800 13px Manrope;color:var(--ink)}
+.chit-open-link{display:flex;align-items:center;gap:7px;color:#6c57bd;font-size:10px;font-weight:800}
+.chit-open-link b{font-size:14px}
+.chit-breadcrumb{display:flex;align-items:center;gap:9px;margin:0 0 17px;color:#a19bae;font-size:10px}
+.chit-breadcrumb button{background:transparent;color:#6e58bc;padding:4px 0;box-shadow:none;font-size:10px}
+.chit-breadcrumb button:hover{background:transparent;box-shadow:none;text-decoration:underline}
+.chit-breadcrumb b{color:var(--ink)}
+.chit-detail-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.chit-member-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.chit-member-card{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:10px;padding:14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--ink);box-shadow:none}
+.chit-member-card:hover{background:#faf9ff;border-color:#d8d0f3;box-shadow:0 8px 18px #2b20500b}
+.chit-member-avatar{height:40px;width:40px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#eeeaff,#e3f6eb);color:#5c4aa7;font:800 15px Manrope;flex:0 0 auto}
+.chit-member-avatar.large{height:58px;width:58px;border-radius:18px;font-size:21px}
+.chit-member-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.chit-member-main b{font-size:11px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chit-member-main small{font-size:9px;color:#9993a8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chit-member-paid{grid-column:2/3;font:800 12px Manrope;color:var(--ink)}
+.chit-member-paid small{display:block;margin-top:3px;font:500 8px 'DM Sans';color:#a29daf}
+.chit-member-card .chit-open-link{grid-column:3;grid-row:2;white-space:nowrap;font-size:9px}
+.chit-member-hero{display:flex;align-items:center;gap:15px;padding:20px;margin-bottom:17px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+.chit-member-hero-copy{flex:1;min-width:0}
+.chit-member-hero-copy .eyebrow{margin:0 0 5px}
+.chit-member-hero-copy h2{font:800 20px Manrope;color:var(--ink);margin:0 0 5px}
+.chit-member-hero-copy p:not(.eyebrow){font-size:10px;color:#9791a6;margin:0}
+.chit-total-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 4px 0;margin-top:10px;border-top:1px solid var(--line);font-size:11px;color:#918ba1}
+.chit-total-line strong{font:800 18px Manrope;color:var(--ink)}
+.dark .chit-group-card,.dark .chit-member-card,.dark .chit-member-hero{background:#221e36;border-color:#37314f;color:#f0edf9}
+.dark .chit-group-card>strong,.dark .chit-group-card-stats b,.dark .chit-member-main b,.dark .chit-member-paid,.dark .chit-member-hero-copy h2,.dark .chit-breadcrumb b,.dark .chit-total-line strong{color:#f0edf9}
+.dark .chit-group-card:hover,.dark .chit-member-card:hover{background:#29243f;border-color:#5a4c80}
+.dark .chit-group-card-stats,.dark .chit-total-line{border-color:#37314f}
+@media(max-width:1100px){.chit-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.chit-member-hero{align-items:flex-start;flex-wrap:wrap}.chit-member-hero-copy{min-width:calc(100% - 80px)}.chit-member-hero .chit-detail-actions{width:100%;justify-content:flex-start}.chit-member-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.chit-group-grid{grid-template-columns:1fr}.chit-detail-actions{width:100%;justify-content:flex-start}.page-intro:has(.chit-add-button){flex-wrap:wrap}.chit-add-button{min-height:39px}.chit-member-card{grid-template-columns:38px minmax(0,1fr) auto;padding:12px}.chit-group-card{padding:17px}}
