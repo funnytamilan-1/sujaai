@@ -92,7 +92,7 @@ app.add_middleware(
 # Keep the canonical production frontend allowed even if a stale hosting-level
 # CORS_ORIGINS value overrides the repository defaults. Preserve any additional
 # explicitly configured origins.
-cors_origins = tuple(dict.fromkeys((*settings.cors_origins, "https://sujaa.vercel.app", "https://sujaai.vercel.app")))
+cors_origins = tuple(dict.fromkeys((*settings.cors_origins, "https://sujaa.vercel.app", "https://sujaai.vercel.app", "https://suja-in.vercel.app")))
 # Keep the browser's login preflight working even if an older hosting
 # environment variable contains an incomplete CORS method/header list.
 cors_methods = tuple(dict.fromkeys((*settings.cors_allow_methods, "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")))
