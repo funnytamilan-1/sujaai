@@ -113,6 +113,9 @@ class PaymentUpdate(BaseModel):
                 raise ValueError(f"{key} cannot be null")
         return self
 
+class PaymentCorrection(PaymentUpdate):
+    owner_password: str | None = Field(default=None, max_length=128)
+
 class UserCreate(BaseModel):
     email: str = Field(min_length=5, max_length=190)
     password: str = Field(min_length=12, max_length=128)
