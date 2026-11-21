@@ -27,6 +27,17 @@ async function readApiResponse(response: Response): Promise<any> {
  throw new Error(`Backend returned a non-JSON page (HTTP ${response.status}). Check the frontend VITE_API_BASE_URL points to the deployed SUJAAI backend origin, without /api. Response: ${preview || "empty response"}`);
 }
 
+function connectionErrorMessage(error:unknown):string{
+ const message=error instanceof Error?error.message:String(error||"Network request failed");
+ if(typeof navigator!=="undefined"&&!navigator.onLine){
+  return "Your device appears to be offline. Reconnect to the internet, then select Refresh to reload SUJAAI data.";
+ }
+ if(error instanceof TypeError||/failed to fetch|networkerror|load failed/i.test(message)){
+  return "SUJAAI could not reach the backend. Check your internet connection and confirm the Render service is Live. Backend URL: https://suja-bxf5.onrender.com. If the browser console explicitly reports a CORS policy error, verify CORS_ORIGINS includes https://suja-in.vercel.app.";
+ }
+ return message;
+}
+
 function ensureApiConfigured(): void {
  if (!IS_PRODUCTION) return;
  if (!API) {
@@ -83,7 +94,27 @@ export default function App(){
 
  const request=useCallback(async <T = unknown,>(path:string,init:RequestInit={}):Promise<T>=>{
   ensureApiConfigured();
-  const response=await fetch(API+path,{...init,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{ }),...init.headers}});
+  const method=(init.method||"GET").toUpperCase();
+  const safeToRetry=method==="GET"||method==="HEAD";
+  let response:Response|undefined;
+  for(let attempt=0;attempt<(safeToRetry?3:1);attempt++){
+   try{
+    response=await fetch(API+path,{...init,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{}),...init.headers}});
+   }catch(error){
+    if(safeToRetry&&attempt<2&&navigator.onLine!==false){
+     await new Promise(resolve=>window.setTimeout(resolve,900*(attempt+1)));
+     continue;
+    }
+    throw new Error(connectionErrorMessage(error));
+   }
+   if(safeToRetry&&[502,503,504].includes(response.status)&&attempt<2){
+    if(response.body)await response.body.cancel().catch(()=>undefined);
+    await new Promise(resolve=>window.setTimeout(resolve,900*(attempt+1)));
+    continue;
+   }
+   break;
+  }
+  if(!response)throw new Error("Backend did not return a response. Check your internet connection and try again.");
   if(response.status===401){sessionStorage.removeItem("sujaai_token");setToken("");throw new Error("Session expired. Sign in again.");}
   const data=await readApiResponse(response);
   if(!response.ok){const detail=Array.isArray(data.detail)?data.detail.map((item:any)=>`${Array.isArray(item.loc)?item.loc.filter((part:any)=>part!=="body"&&part!=="query").join("."):"request"}: ${item.msg||"Invalid value"}`).join("; "):typeof data.detail==="string"?data.detail:`Request failed (HTTP ${response.status})`;throw new Error(detail||`Request failed (HTTP ${response.status})`);}
@@ -91,6 +122,9 @@ export default function App(){
  },[token]);
 
  const refresh=useCallback(async()=>{
+  // Check/wake the API before fanning out dashboard requests; Render free instances can sleep.
+  const health=await request<{status:string}>("/api/health");
+  if(health.status!=="ok")throw new Error("The configured backend did not return a healthy SUJAAI API response.");
   const [g,m,p,s,me]=await Promise.all([
    request<Group[]>("/api/chit/groups"),request<Member[]>("/api/chit/members?limit=500"),
    request<Payment[]>("/api/chit/payments?limit=500"),request<Summary>("/api/chit/reports/summary"),request<{email:string;role:string}>("/api/auth/me")
@@ -105,15 +139,22 @@ export default function App(){
   const [rows,sums]=await Promise.all([request<PeriodRow[]>(`/api/chit/reports/periods?${qs.toString()}`),request<Summary>(`/api/chit/reports/summary?${dates.toString()}`)]);setPeriodRows(rows);setReportSummary(sums);
  },[request,period,reportStart,reportEnd]);
 
- useEffect(()=>{if(token){refresh().catch(e=>setNotice(e.message));}},[token,refresh]);
+ useEffect(()=>{
+  const onOffline=()=>setNotice("Internet connection lost. Reconnect, then use Refresh to reload your SUJAAI data.");
+  const onOnline=()=>setNotice("Internet connection restored. Select Refresh to reconnect to the SUJAAI backend.");
+  window.addEventListener("offline",onOffline);
+  window.addEventListener("online",onOnline);
+  return ()=>{window.removeEventListener("offline",onOffline);window.removeEventListener("online",onOnline);};
+ },[]);
+ useEffect(()=>{if(token){refresh().catch(e=>setNotice(connectionErrorMessage(e)));}},[token,refresh]);
  useEffect(()=>{if(token&&page==="reports")loadPeriod().catch(e=>setNotice(e.message));},[token,page,loadPeriod]);
  useEffect(()=>{if(token&&page==="backup"&&(role==="owner"||role==="admin"))request<AuditRow[]>("/api/audit?limit=50").then(setAuditRows).catch(e=>setNotice(e.message));},[token,page,role,request]);
  useEffect(()=>{if(token&&page==="groups"&&selectedGroupId!==null){request<GroupDetail>(`/api/chit/groups/${selectedGroupId}`).then(setGroupDetails).catch(e=>setNotice(e.message));}else{setGroupDetails(null);}},[token,page,selectedGroupId,request,groups,members,payments]);
  useEffect(()=>{if(token&&page==="groups"&&selectedMemberId!==null){request<MemberDetails>(`/api/chit/members/${selectedMemberId}/details`).then(setMemberDetails).catch(e=>setNotice(e.message));}else{setMemberDetails(null);}},[token,page,selectedMemberId,request,members,payments]);
  useEffect(()=>{localStorage.setItem("sujaai_theme",dark?"dark":"light");},[dark]);
 
- async function checkBackend(){setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/health",{headers:{Accept:"application/json"}});const data=await readApiResponse(res);if(!res.ok)throw new Error(`Backend health check failed (HTTP ${res.status}).`);if(data.status!=="ok")throw new Error("The configured URL did not return the SUJAAI API health response.");setNotice("Backend connected successfully. API health: OK.");}catch(e){const message=(e as Error).message||"Connection failed.";setNotice(message==="Failed to fetch"?"Cannot reach the backend. Check the backend deployment and allow this frontend origin in CORS_ORIGINS.":message);}finally{setBusy(false);}}
- async function signIn(e:FormEvent){e.preventDefault();setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await readApiResponse(res);if(!res.ok)throw new Error(data.detail||`Sign in failed (HTTP ${res.status})`);if(!data.access_token)throw new Error("Backend login response did not contain an access token.");sessionStorage.setItem("sujaai_token",data.access_token);setToken(data.access_token);setPassword("");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
+ async function checkBackend(){setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/health",{headers:{Accept:"application/json"}});const data=await readApiResponse(res);if(!res.ok)throw new Error(`Backend health check failed (HTTP ${res.status}).`);if(data.status!=="ok")throw new Error("The configured URL did not return the SUJAAI API health response.");setNotice("Backend connected successfully. API health: OK.");}catch(e){const message=(e as Error).message||"Connection failed.";setNotice(connectionErrorMessage(e));}finally{setBusy(false);}}
+ async function signIn(e:FormEvent){e.preventDefault();setBusy(true);setNotice("");try{ensureApiConfigured();const res=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await readApiResponse(res);if(!res.ok)throw new Error(data.detail||`Sign in failed (HTTP ${res.status})`);if(!data.access_token)throw new Error("Backend login response did not contain an access token.");sessionStorage.setItem("sujaai_token",data.access_token);setToken(data.access_token);setPassword("");}catch(e){setNotice(connectionErrorMessage(e));}finally{setBusy(false);}}
  function logout(){sessionStorage.removeItem("sujaai_token");setToken("");setPage("dashboard");}
 
  async function createGroup(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/chit/groups",{method:"POST",body:JSON.stringify({...groupForm,default_amount:Number(groupForm.default_amount)})});setGroupForm({group_code:"",name:"",chit_type:"monthly",default_amount:"",start_date:today,description:""});setShowAddGroup(false);await refresh();setNotice("Group created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
@@ -127,7 +168,7 @@ export default function App(){
  async function createStaff(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/users",{method:"POST",body:JSON.stringify(newUser)});setNewUser({email:"",password:"",role:"staff"});await refresh();setNotice("User account created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  async function toggleUser(u:User){try{await request(`/api/users/${u.id}`,{method:"PATCH",body:JSON.stringify({is_active:!u.is_active})});await refresh();}catch(e){setNotice((e as Error).message);}}
 
- async function download(path:string,filename:string):Promise<boolean>{try{ensureApiConfigured();const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){setNotice((e as Error).message);return false;}}
+ async function download(path:string,filename:string):Promise<boolean>{try{ensureApiConfigured();const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){setNotice(connectionErrorMessage(e));return false;}}
  async function importBackup(file?:File){if(!file)return;setBusy(true);try{const parsed=JSON.parse(await file.text());if(!window.confirm("Restore this backup into an empty chit database? Existing chit records will not be overwritten."))return;const result=await request<{restored:boolean}>("/api/backup/json/restore",{method:"POST",body:JSON.stringify(parsed)});await refresh();setNotice(result.restored?"Backup restored.":"Restore not completed.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  const filteredMembers=useMemo(()=>members.filter(m=>(!groupFilter||m.group_id===groupFilter)&&[m.name,m.member_code,m.mobile].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[members,groupFilter,search]);
  const filteredPayments=useMemo(()=>payments.filter(p=>(!groupFilter||members.find(m=>m.id===p.member_id)?.group_id===groupFilter)&&[p.payment_ref,p.recorded_by,members.find(m=>m.id===p.member_id)?.name||""].some(v=>v.toLowerCase().includes(search.toLowerCase()))),[payments,members,groupFilter,search]);
