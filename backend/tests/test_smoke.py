@@ -214,8 +214,8 @@ def test_frontend_cors_preflight_and_error_responses_are_allowed():
     assert missing.status_code == 404
     assert missing.headers["access-control-allow-origin"] == origin
 
-def test_sujaai_production_frontend_origin_is_allowed():
-    origin = "https://sujaai.vercel.app"
+def test_suja_in_production_frontend_origin_is_allowed():
+    origin = "https://suja-in.vercel.app"
     response = client.options(
         "/api/chit/groups",
         headers={
@@ -229,8 +229,8 @@ def test_sujaai_production_frontend_origin_is_allowed():
 
 
 
-def test_production_frontend_cors_preflight_and_login_response():
-    origin = "https://sujaai.vercel.app"
+def test_suja_in_frontend_cors_preflight_and_login_response():
+    origin = "https://suja-in.vercel.app"
     preflight = client.options(
         "/api/auth/login",
         headers={
