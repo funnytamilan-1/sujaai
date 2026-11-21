@@ -65,6 +65,14 @@ def test_chit_flow_and_payment_correction_audit():
     })
     assert payment.status_code == 201
     payment_id = payment.json()["id"]
+    group_detail = client.get(f"/api/chit/groups/{group.json()['id']}", headers=headers)
+    assert group_detail.status_code == 200
+    assert group_detail.json()["total_members"] == 1
+    assert group_detail.json()["lifetime_collection"] == "500.00"
+    member_detail = client.get(f"/api/chit/members/{member.json()['id']}/details", headers=headers)
+    assert member_detail.status_code == 200
+    assert member_detail.json()["payment_count"] == 1
+    assert member_detail.json()["lifetime_paid"] == "500.00"
     receipt = client.get(f"/api/chit/payments/{payment_id}/excel", headers=headers)
     assert receipt.status_code == 200
     assert "spreadsheetml" in receipt.headers["content-type"]
@@ -74,7 +82,10 @@ def test_chit_flow_and_payment_correction_audit():
     statement = client.get(f"/api/chit/members/{member.json()['id']}/statement/excel", headers=headers)
     assert statement.status_code == 200
     assert "spreadsheetml" in statement.headers["content-type"]
-    corrected = client.patch(f"/api/chit/payments/{payment_id}", headers=headers, json={"amount": "450.00"})
+    denied = client.patch(f"/api/chit/payments/{payment_id}", headers=headers, json={"amount": "450.00"})
+    assert denied.status_code == 403
+    assert "Owner password" in denied.json()["detail"]
+    corrected = client.patch(f"/api/chit/payments/{payment_id}", headers=headers, json={"amount": "450.00", "owner_password": "test-only-password"})
     assert corrected.status_code == 200
     assert corrected.json()["amount"] == "450.00"
     audit = client.get("/api/audit", headers=headers)
