@@ -63,64 +63,53 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend in development.
 
 ## Deployment
 
-### Vercel FastAPI backend
+### Current deployment: Render backend + Vercel frontend
 
-Deploy the backend as its own Vercel project (separate from the frontend project):
+This repository includes a Render Docker service definition in `render.yaml`. The frontend is deployed separately on Vercel.
 
-- Import the existing `funnytamilan-1/sujaai` repository.
-- Project name: `sujaai-api` (or another backend-specific name).
-- Root Directory: `backend` (important — do not select the repository root).
-- Framework Preset: FastAPI / automatic detection.
-- Build Command: leave at the Vercel-detected default; do not run Uvicorn or Docker.
-- Output Directory: leave blank.
-- The Python runtime is pinned to 3.12 by `backend/.python-version`.
-- The backend exposes the FastAPI instance through `backend/main.py`, a Vercel-supported root entrypoint. Set the backend project's Root Directory to `backend`; Vercel then routes requests to the FastAPI app so its router handles `/api/*` paths. `backend/vercel.json` excludes tests from the function bundle.
-- Health check after deployment: `https://YOUR-API-DOMAIN/api/health/ready`; interactive docs: `https://YOUR-API-DOMAIN/docs`.
+**Render backend**
 
-Set these Environment Variables in the backend Vercel project (Production and Preview only where appropriate):
+- Connect this repository to Render and create the web service from `render.yaml`, or create a Docker web service manually.
+- Root directory: `backend`.
+- Dockerfile: `backend/Dockerfile`.
+- Health check path: `/api/health/ready`.
+- The Docker startup command applies Alembic migrations before starting Uvicorn. Keep a persistent PostgreSQL database attached; do not use SQLite for production.
+- The current backend origin supplied for this deployment is `https://suja-bxf5.onrender.com`. If Render assigns a different service domain, use that new origin everywhere below.
+
+Set these backend Environment Variables in Render (Production):
 
 | Variable | Value |
 |---|---|
 | `APP_ENV` | `production` |
 | `DEBUG` | `false` |
-| `SECRET_KEY` | A unique random secret with at least 32 characters |
-| `ADMIN_EMAIL` | Initial owner email |
-| `ADMIN_PASSWORD` | Unique password with at least 12 characters |
-| `DATABASE_URL` | Persistent PostgreSQL connection URL (use the provider's pooled/serverless URL) |
+| `SECRET_KEY` | Generate a unique secret with at least 32 characters |
+| `ADMIN_EMAIL` | Owner login email |
+| `ADMIN_PASSWORD` | Unique owner password with at least 12 characters |
+| `DATABASE_URL` | Persistent PostgreSQL connection URL |
+| `FRONTEND_URL` | `https://suja-in.vercel.app` |
+| `CORS_ORIGINS` | `https://suja-in.vercel.app` |
 | `DB_POOL_SIZE` | `1` |
 | `DB_MAX_OVERFLOW` | `0` |
-| `MAX_REQUEST_BODY_BYTES` | `4194304` (4 MiB; below Vercel's 4.5 MB function request cap) |
-| `MAX_DESIGN_PAYLOAD_BYTES` | `3145728` (3 MiB) |
-| `FRONTEND_URL` | Exact deployed frontend origin, e.g. `https://sujaai.vercel.app` |
-| `CORS_ORIGINS` | Comma-separated exact frontend origins; no `/api` or page paths |
 
-Do not use SQLite for production on Vercel: function filesystems are not durable shared databases. The API requires PostgreSQL in production and the database must be external to the function.
+Do not commit secrets or paste them into chat. Back up the PostgreSQL database before deployments that change the schema. Render free web services may spin down after inactivity; the first request after a sleep period can take longer while the service starts. This is different from a browser reporting `ERR_INTERNET_DISCONNECTED`, which can also indicate a local network interruption.
 
-#### First-time database migration
+**Vercel frontend**
 
-The backend does not run schema migrations automatically on every serverless request or deployment. Before first use:
-
-1. Back up the PostgreSQL database.
-2. In GitHub repository Settings → Secrets and variables → Actions, add `SUJAAI_DATABASE_URL` with the PostgreSQL URL.
-3. Open Actions → `SUJAAI production database migration` → Run workflow on `main`.
-4. Confirm the workflow succeeds before using the API.
-
-This workflow is manual and runs `alembic upgrade head`; it does not drop existing tables. The initial baseline creates missing tables and indexes only. Existing column changes require a separately reviewed migration. Have a trusted adult/maintainer manage production database credentials and backups.
-
-The backend's Vercel Function uses a small per-instance PostgreSQL connection pool because serverless instances can scale independently. Do not depend on local files or in-memory state for durable records.
-
-### Vercel frontend
-
-Deploy the frontend as a separate Vercel project:
-
-- Import the same repository.
+- Import the same repository as a separate Vercel project.
 - Root Directory: `frontend`.
-- Build command: `npm run build`.
-- Output directory: `dist`.
-- Set `VITE_API_BASE_URL` to the backend Vercel origin only, e.g. `https://sujaai-api.vercel.app` (do not append `/api`).
-- Add the exact frontend domain to the backend's `FRONTEND_URL` and `CORS_ORIGINS`, then redeploy the backend.
-- The frontend Vite proxy is only for local development; production frontend requests use `VITE_API_BASE_URL`.
-- The repository's Dockerfile remains available for non-Vercel container testing; Vercel's native Python runtime does not use it.
+- Build Command: `npm run build`.
+- Output Directory: `dist`.
+- Set the frontend project's Environment Variable:
+
+```env
+VITE_API_BASE_URL=https://suja-bxf5.onrender.com
+```
+
+Use only the backend origin; do not append `/api` or a trailing path. Redeploy the frontend after changing this variable. The backend must allow the exact frontend origin in `FRONTEND_URL` and `CORS_ORIGINS`.
+
+### Optional: deploy the backend on Vercel instead
+
+The repository also contains Vercel FastAPI entrypoints and configuration. If choosing Vercel for the backend instead of Render, create a separate Vercel project with Root Directory `backend`, use a persistent PostgreSQL database, configure the backend environment variables above, and change `VITE_API_BASE_URL` to that Vercel backend origin. Do not point the frontend to both providers at once.
 
 ### Environment variable reference
 
@@ -129,11 +118,10 @@ Deploy the frontend as a separate Vercel project:
 | `APP_ENV` | Backend | `development`, `test`, `staging`, or `production` |
 | `SECRET_KEY` | Backend secret | JWT signing key; 32+ characters |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Backend secret | Initial owner login credentials |
-| `DATABASE_URL` | Backend Vercel secret | Persistent PostgreSQL connection URL in production |
+| `DATABASE_URL` | Backend secret | Persistent PostgreSQL connection URL in production |
 | `FRONTEND_URL` | Backend | Primary frontend website origin |
-| `CORS_ORIGINS` | Backend | Additional/allowed frontend website origins, comma-separated |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Backend | JWT lifetime; default 480 minutes |
-| `VITE_API_BASE_URL` | Vercel frontend | Backend Vercel origin; do not include `/api` |
+| `CORS_ORIGINS` | Backend | Exact allowed frontend website origins, comma-separated |
+| `VITE_API_BASE_URL` | Vercel frontend | Backend origin only; do not include `/api` |
 
 ## API overview
 
