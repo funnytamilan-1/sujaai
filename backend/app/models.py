@@ -48,7 +48,9 @@ class ChitPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     member: Mapped["ChitMember"] = relationship(back_populates="payments")
 
-Index("ix_chit_members_member_code", ChitMember.member_code)\nIndex("uq_chit_members_group_member_code", ChitMember.group_id, ChitMember.member_code, unique=True)\nIndex("ix_payment_paid_at_member", ChitPayment.paid_at, ChitPayment.member_id)
+Index("ix_chit_members_member_code", ChitMember.member_code)
+Index("uq_chit_members_group_member_code", ChitMember.group_id, ChitMember.member_code, unique=True)
+Index("ix_payment_paid_at_member", ChitPayment.paid_at, ChitPayment.member_id)
 
 class AuditLog(Base):
     __tablename__ = "application_audit_logs"
