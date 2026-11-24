@@ -261,9 +261,17 @@ def group_detail(group_id:int,db:Session=Depends(get_db),user=Depends(current_us
 def create_member(payload:schemas.MemberCreate,db:Session=Depends(get_db),user=Depends(require_roles("owner","admin","staff"))):
     group=group_or_404(db,payload.group_id)
     if group.status!="active": raise HTTPException(422,"Cannot add members to an inactive group")
+    duplicate=db.scalar(select(models.ChitMember.id).where(
+        models.ChitMember.group_id==payload.group_id,
+        models.ChitMember.member_code==payload.member_code,
+    ).limit(1))
+    if duplicate is not None:
+        raise HTTPException(409,"This Member ID is already in use in this group. Choose a different Member ID.")
     item=models.ChitMember(**payload.model_dump()); db.add(item)
     try: db.flush()
-    except IntegrityError: db.rollback(); raise HTTPException(409,"Member ID already exists")
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409,"This Member ID is already in use in this group. Choose a different Member ID.")
     audit(db,user["email"],"member.create","chit_member",item.id); db.commit(); db.refresh(item)
     return item
 
