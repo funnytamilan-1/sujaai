@@ -125,9 +125,18 @@ export default function App(){
   // Check/wake the API before fanning out dashboard requests; Render free instances can sleep.
   const health=await request<{status:string}>("/api/health");
   if(health.status!=="ok")throw new Error("The configured backend did not return a healthy SUJAAI API response.");
+  const loadAllPages = async <T,>(path:string):Promise<T[]> => {
+   const collected:T[]=[];
+   for(let offset=0;;offset+=500){
+    const separator=path.includes("?")?"&":"?";
+    const batch=await request<T[]>(`${path}${separator}limit=500&offset=${offset}`);
+    collected.push(...batch);
+    if(batch.length<500) return collected;
+   }
+  };
   const [g,m,p,s,me]=await Promise.all([
-   request<Group[]>("/api/chit/groups"),request<Member[]>("/api/chit/members?limit=500"),
-   request<Payment[]>("/api/chit/payments?limit=500"),request<Summary>("/api/chit/reports/summary"),request<{email:string;role:string}>("/api/auth/me")
+   request<Group[]>("/api/chit/groups"),loadAllPages<Member>("/api/chit/members"),
+   loadAllPages<Payment>("/api/chit/payments"),request<Summary>("/api/chit/reports/summary"),request<{email:string;role:string}>("/api/auth/me")
   ]);
   setGroups(g);setMembers(m);setPayments(p);setSummary(s);setRole(me.role);setEmail(me.email);
   if(me.role==="owner"||me.role==="admin"){const u=await request<User[]>("/api/users");setUsers(u);}
@@ -167,6 +176,36 @@ export default function App(){
  async function toggleMember(m:Member){try{await request(`/api/chit/members/${m.id}`,{method:"PATCH",body:JSON.stringify({status:m.status==="active"?"inactive":"active"})});await refresh();}catch(e){setNotice((e as Error).message);}}
  async function createStaff(e:FormEvent){e.preventDefault();setBusy(true);try{await request("/api/users",{method:"POST",body:JSON.stringify(newUser)});setNewUser({email:"",password:"",role:"staff"});await refresh();setNotice("User account created.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
  async function toggleUser(u:User){try{await request(`/api/users/${u.id}`,{method:"PATCH",body:JSON.stringify({is_active:!u.is_active})});await refresh();}catch(e){setNotice((e as Error).message);}}
+
+ function openAddMemberWorkspace(){
+  const group=groups.find(g=>g.status==="active");
+  setPage("groups");setSelectedMemberId(null);setShowAddPayment(false);
+  if(!group){setSelectedGroupId(null);setShowAddGroup(true);setNotice("Create an active chit group before adding a member.");return;}
+  setSelectedGroupId(group.id);setMemberCreateGroup(group.id);setShowAddMember(true);setNotice("");
+ }
+ function openPaymentWorkspace(){
+  const member=members.find(m=>m.status==="active"&&groups.some(g=>g.id===m.group_id&&g.status==="active"));
+  if(!member){
+   const group=groups.find(g=>g.status==="active");
+   setPage("groups");setShowAddPayment(false);
+   if(group){setSelectedGroupId(group.id);setSelectedMemberId(null);setMemberCreateGroup(group.id);setShowAddMember(true);setNotice("Add an active member before recording a payment.");}
+   else{setSelectedGroupId(null);setShowAddGroup(true);setNotice("Create an active chit group before recording a payment.");}
+   return;
+  }
+  const group=groups.find(g=>g.id===member.group_id);
+  if(!group)return;
+  setPage("groups");setSelectedGroupId(group.id);setSelectedMemberId(member.id);setShowAddMember(false);
+  setPaymentForm({member_id:String(member.id),amount:String(group.default_amount),paid_at:localDateTimeNow(),notes:""});
+  setShowAddPayment(true);setNotice("");
+ }
+ function openRecentPaymentHistory(){
+  const payment=payments[0];
+  const member=payment?members.find(m=>m.id===payment.member_id):undefined;
+  const group=member?groups.find(g=>g.id===member.group_id):undefined;
+  setPage("groups");setShowAddPayment(false);setShowAddMember(false);
+  if(!member||!group){setSelectedGroupId(null);setSelectedMemberId(null);setNotice("No payment history is available yet.");return;}
+  setSelectedGroupId(group.id);setSelectedMemberId(member.id);setNotice("");
+ }
 
  async function download(path:string,filename:string):Promise<boolean>{try{ensureApiConfigured();const res=await fetch(API+path,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||"Download failed");}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){setNotice(connectionErrorMessage(e));return false;}}
  async function importBackup(file?:File){if(!file)return;setBusy(true);try{const parsed=JSON.parse(await file.text());if(!window.confirm("Restore this backup into an empty chit database? Existing chit records will not be overwritten."))return;const result=await request<{restored:boolean}>("/api/backup/json/restore",{method:"POST",body:JSON.stringify(parsed)});await refresh();setNotice(result.restored?"Backup restored.":"Restore not completed.");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}}
@@ -257,14 +296,14 @@ export default function App(){
   {groups.length? <div className="collection-list">{groups.map(g=>{const total=Number(summary?.group_totals.find(x=>x.group_name===g.name)?.collection||0);return <div className="collection-item" key={g.id}><div className="collection-meta"><div><b>{g.name}</b><small>{g.group_code} · {g.chit_type} · {members.filter(m=>m.group_id===g.id).length} members</small></div><strong>{money(total)}</strong></div><div className="collection-track"><span style={{width:`${Math.max(total?2:0,(total/groupCollectionMax)*100)}%`}}></span></div></div>})}</div>:<p className="empty">Create a chit group to see collection summaries here.</p>}
  </section>
  <section className="dashboard-grid dashboard-bottom">
-  <article className="panel recent-panel"><div className="panel-head"><div><h2>Recent payments</h2><p>Latest entries in the loaded payment list.</p></div><button className="secondary" onClick={()=>setPage("payments")}>View ledger →</button></div>
+  <article className="panel recent-panel"><div className="panel-head"><div><h2>Recent payments</h2><p>Latest entries in the loaded payment list.</p></div><button className="secondary" onClick={openRecentPaymentHistory}>Open latest payment →</button></div>
    {recentPayments.length?<div className="recent-list">{recentPayments.map(p=>{const member=members.find(m=>m.id===p.member_id);const group=groups.find(g=>g.id===member?.group_id);return <div className="recent-row" key={p.id}><div className="recent-avatar">{(member?.name||"M").slice(0,1).toUpperCase()}</div><div className="recent-person"><b>{member?.name||"Unknown member"}</b><small>{p.payment_ref} · {group?.name||"No group"}</small></div><div className="recent-amount"><b>{money(p.amount)}</b><small>{new Date(p.paid_at).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}</small></div></div>})}</div>:<p className="empty">No payments have been recorded yet.</p>}
   </article>
   <article className="panel quick-panel"><div className="panel-head"><div><h2>Quick actions</h2><p>Jump straight into common tasks.</p></div></div>
    <div className="dashboard-quick-grid">
     <button className="dashboard-action" onClick={()=>setPage("groups")}><span>＋</span><b>Create group</b><small>Set up a contribution plan</small></button>
-    <button className="dashboard-action" onClick={()=>setPage("members")}><span>♙</span><b>Add member</b><small>Register a participant</small></button>
-    <button className="dashboard-action" onClick={()=>setPage("payments")}><span>₹</span><b>Record payment</b><small>Save a collection entry</small></button>
+    <button className="dashboard-action" onClick={openAddMemberWorkspace}><span>♙</span><b>Add member</b><small>Register a participant</small></button>
+    <button className="dashboard-action" onClick={openPaymentWorkspace}><span>₹</span><b>Record payment</b><small>Save a collection entry</small></button>
     <button className="dashboard-action" onClick={()=>setPage("reports")}><span>▤</span><b>View reports</b><small>Review collection totals</small></button>
    </div>
   </article>
