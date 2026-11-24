@@ -23,7 +23,7 @@ class ChitGroup(Base):
 class ChitMember(Base):
     __tablename__ = "chit_members"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    member_code: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    member_code: Mapped[str] = mapped_column(String(60))
     group_id: Mapped[int] = mapped_column(ForeignKey("chit_groups.id"), index=True)
     name: Mapped[str] = mapped_column(String(160), index=True)
     mobile: Mapped[str] = mapped_column(String(20), index=True)
@@ -48,7 +48,7 @@ class ChitPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     member: Mapped["ChitMember"] = relationship(back_populates="payments")
 
-Index("ix_payment_paid_at_member", ChitPayment.paid_at, ChitPayment.member_id)
+Index("ix_chit_members_member_code", ChitMember.member_code)\nIndex("uq_chit_members_group_member_code", ChitMember.group_id, ChitMember.member_code, unique=True)\nIndex("ix_payment_paid_at_member", ChitPayment.paid_at, ChitPayment.member_id)
 
 class AuditLog(Base):
     __tablename__ = "application_audit_logs"
