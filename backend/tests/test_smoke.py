@@ -262,3 +262,33 @@ def test_suja_in_frontend_cors_preflight_and_login_response():
     )
     assert response.status_code == 401
     assert response.headers.get("access-control-allow-origin") == origin
+
+
+def test_member_code_is_unique_within_group_not_globally():
+    headers = owner_headers()
+    groups = []
+    for code, name in [("SCOPE-G1", "Scope Group One"), ("SCOPE-G2", "Scope Group Two")]:
+        response = client.post("/api/chit/groups", headers=headers, json={
+            "group_code": code, "name": name, "chit_type": "monthly",
+            "default_amount": "500.00", "start_date": "2026-01-01"
+        })
+        assert response.status_code == 201
+        groups.append(response.json())
+
+    def add_member(group_id, name):
+        return client.post("/api/chit/members", headers=headers, json={
+            "member_code": "REUSED-001", "group_id": group_id, "name": name,
+            "mobile": "+919999999999", "address": "Test address",
+            "joining_date": "2026-01-01"
+        })
+
+    first = add_member(groups[0]["id"], "First Group Member")
+    assert first.status_code == 201
+
+    duplicate_same_group = add_member(groups[0]["id"], "Duplicate In Same Group")
+    assert duplicate_same_group.status_code == 409
+    assert "in this group" in duplicate_same_group.json()["detail"]
+
+    second_group = add_member(groups[1]["id"], "Second Group Member")
+    assert second_group.status_code == 201
+    assert second_group.json()["member_code"] == first.json()["member_code"]
